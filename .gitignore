@@ -52,3 +52,8 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# JetBarins IDE
+.idea/
+!.idea/runConfigurations/
+!.idea/codeStyles/
