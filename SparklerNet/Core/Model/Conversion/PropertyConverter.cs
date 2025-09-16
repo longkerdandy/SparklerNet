@@ -50,7 +50,6 @@ public static class PropertyConverter
                     () => protoProperty.PropertysetValue = propertySet.ToProtoPropertySet(),
                 DataType.PropertySetList when property.Value is PropertySetList propertySetList =>
                     () => protoProperty.PropertysetsValue = propertySetList.ToProtoPropertySetList(),
-
                 _ => throw new NotSupportedException($"Data type {property.Type} is not supported in Property.")
             };
 
@@ -64,7 +63,7 @@ public static class PropertyConverter
     /// <summary>
     ///     Converts a <see cref="PropertySet" /> to a Protobuf <see cref="ProtoPropertySet" />.
     /// </summary>
-    /// <param name="propertySet">The property set to c  onvert.</param>
+    /// <param name="propertySet">The property set to convert.</param>
     /// <returns>The converted Protobuf property set.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="propertySet" /> is null.</exception>
     public static ProtoPropertySet ToProtoPropertySet(this PropertySet propertySet)
@@ -153,7 +152,8 @@ public static class PropertyConverter
     /// </summary>
     /// <param name="protoPropertySet">The Protobuf property set to convert.</param>
     /// <returns>The converted property set.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="protoPropertySet" /> is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="protoPropertySet" /> is null.</exception>   
+    /// <exception cref="ArgumentException">Thrown when the keys and values arrays in <paramref name="protoPropertySet" /> have different lengths.</exception>
     public static PropertySet ToPropertySet(this ProtoPropertySet protoPropertySet)
     {
         ArgumentNullException.ThrowIfNull(protoPropertySet);

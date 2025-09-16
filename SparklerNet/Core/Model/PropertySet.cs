@@ -13,5 +13,5 @@ public record PropertySet
     /// <summary>
     ///     A dictionary of key-value pairs, where the key is a string and the value is a <see cref="PropertyValue" />.
     /// </summary>
-    public Dictionary<string, PropertyValue> Properties { get; set; } = [];
+    public Dictionary<string, PropertyValue> Properties { get; init; } = [];
 }

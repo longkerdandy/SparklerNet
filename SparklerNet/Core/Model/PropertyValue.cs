@@ -13,7 +13,7 @@ public record PropertyValue
     ///     The data type of the property value.
     ///     MUST be one of the enumerated values as shown in Basic Data Types or Property Value Data Types.
     /// </summary>
-    public DataType Type { get; set; }
+    public DataType Type { get; init; }
 
     /// <summary>
     ///     Indicates whether the property value is null.
