@@ -55,5 +55,6 @@ nunit-*.xml
 
 # JetBarins IDE
 .idea/
+*.DotSettings.user
 !.idea/runConfigurations/
 !.idea/codeStyles/
