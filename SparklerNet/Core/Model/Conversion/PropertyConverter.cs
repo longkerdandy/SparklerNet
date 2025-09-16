@@ -43,6 +43,8 @@ public static class PropertyConverter
                 DataType.UInt64 => () => protoProperty.LongValue = Convert.ToUInt64(property.Value),
                 DataType.Float => () => protoProperty.FloatValue = Convert.ToSingle(property.Value),
                 DataType.Double => () => protoProperty.DoubleValue = Convert.ToDouble(property.Value),
+                DataType.Boolean => () => protoProperty.BooleanValue = Convert.ToBoolean(property.Value),
+                DataType.DateTime => () => protoProperty.LongValue = Convert.ToUInt64(property.Value),
                 DataType.String or DataType.Text => () => protoProperty.StringValue = property.Value!.ToString()!,
                 DataType.PropertySet when property.Value is PropertySet propertySet =>
                     () => protoProperty.PropertysetValue = propertySet.ToProtoPropertySet(),
@@ -131,6 +133,8 @@ public static class PropertyConverter
             DataType.UInt64 => protoProperty.LongValue,
             DataType.Float => protoProperty.FloatValue,
             DataType.Double => protoProperty.DoubleValue,
+            DataType.Boolean => protoProperty.BooleanValue,
+            DataType.DateTime => (long)protoProperty.LongValue,
             DataType.String or DataType.Text => protoProperty.StringValue,
             DataType.PropertySet => protoProperty.PropertysetValue.ToPropertySet(),
             DataType.PropertySetList => protoProperty.PropertysetsValue.ToPropertySetList(),
