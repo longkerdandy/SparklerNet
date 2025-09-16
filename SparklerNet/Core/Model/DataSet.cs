@@ -9,15 +9,67 @@ namespace SparklerNet.Core.Model;
 [PublicAPI]
 public record DataSet
 {
-    // The number of columns in this DataSet.
-    public ulong NumberOfColumns { get; init; }
-
-    // The column headers of this DataSet.
+    /// <summary>
+    ///     Column names.
+    /// </summary>
     public List<string> Columns { get; init; } = [];
 
-    // The column types of this DataSet.
+    /// <summary>
+    ///     Column data types, MUST be one of the enumerated values as shown in the Sparkplug Basic Data Types.
+    /// </summary>
     public List<DataType> Types { get; init; } = [];
 
-    // The array of DataSetRow objects.
-    public List<DataSetRow> Rows { get; init; } = [];
+    /// <summary>
+    ///     Key: Column name, Value: Column of data.
+    /// </summary>
+    public Dictionary<string, List<object>> ColumnData { get; set; } = [];
+
+    /// <summary>
+    ///     Number of rows.
+    /// </summary>
+    public int RowCount => Columns.Count > 0 && ColumnData.TryGetValue(Columns[0], out var data) ? data.Count : 0;
+
+    /// <summary>
+    ///     Number of columns.
+    /// </summary>
+    public int ColumnCount => Columns.Count;
+
+    /// <summary>
+    ///     Adds a new row of data to the DataSet.
+    /// </summary>
+    /// <param name="rowData">The data values for the new row, in column order.</param>
+    /// <exception cref="ArgumentException">Thrown when the number of values does not match the number of columns.</exception>
+    public void AddRow(List<object> rowData)
+    {
+        if (rowData.Count != Columns.Count)
+            throw new ArgumentException(
+                $"The number of values ({rowData.Count}) does not match the number of columns ({Columns.Count}).");
+
+        for (var i = 0; i < Columns.Count; i++)
+        {
+            var columnName = Columns[i];
+            if (!ColumnData.ContainsKey(columnName)) ColumnData[columnName] = [];
+            ColumnData[columnName].Add(rowData[i]);
+        }
+    }
+
+    /// <summary>
+    ///     Gets all rows of data in the DataSet.
+    /// </summary>
+    /// <returns>Enumerable of rows, where each row is a list of values in column order.</returns>
+    /// <exception cref="IndexOutOfRangeException">Thrown when a column does not have enough values for a row.</exception>
+    public IEnumerable<List<object>> GetRows()
+    {
+        var rowCount = RowCount;
+        for (var rowIndex = 0; rowIndex < rowCount; rowIndex++)
+        {
+            var rowData = new List<object>(Columns.Count);
+            foreach (var columnName in Columns)
+                if (ColumnData.TryGetValue(columnName, out var columnValues) && rowIndex < columnValues.Count)
+                    rowData.Add(columnValues[rowIndex]);
+                else
+                    throw new IndexOutOfRangeException($"Column {columnName} does not have enough values.");
+            yield return rowData;
+        }
+    }
 }
