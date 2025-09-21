@@ -58,3 +58,6 @@ nunit-*.xml
 *.DotSettings.user
 !.idea/runConfigurations/
 !.idea/codeStyles/
+
+# VS Code IDE
+.vscode/
