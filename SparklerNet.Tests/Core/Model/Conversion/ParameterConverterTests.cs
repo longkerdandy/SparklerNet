@@ -516,7 +516,8 @@ public class ParameterConverterTests
         var protoParameter = new ProtoParameter
         {
             Name = "unsupportedParam",
-            Type = (uint)DataType.UUID
+            Type = (uint)DataType.UUID,
+            StringValue = "a81bc81b-dead-4e5d-abff-90865d1e13b1"
         };
 
         Assert.Throws<NotSupportedException>(() => protoParameter.ToParameter());

@@ -68,24 +68,7 @@ public static class ParameterConverter
 
         var dataType = (DataType)protoParameter.Type;
 
-        // First check if the data type is supported
-        var isSupported = dataType switch
-        {
-            DataType.Int8 or DataType.Int16 or DataType.Int32 or
-            DataType.UInt8 or DataType.UInt16 or DataType.UInt32 or
-            DataType.Int64 or DataType.UInt64 or
-            DataType.Float or DataType.Double or
-            DataType.Boolean or DataType.DateTime or
-            DataType.String or DataType.Text => true,
-            _ => false
-        };
-
-        if (!isSupported)
-        {
-            throw new NotSupportedException($"Data type {dataType} is not supported in Parameter conversion.");
-        }
-
-        // Determine the value to set
+        // Convert the value based on the data type.
         object? value = null;
         if (protoParameter.ValueCase != ProtoParameter.ValueOneofCase.None)
             value = dataType switch
@@ -103,7 +86,7 @@ public static class ParameterConverter
                 DataType.Boolean => protoParameter.BooleanValue,
                 DataType.DateTime => (long)protoParameter.LongValue,
                 DataType.String or DataType.Text => protoParameter.StringValue,
-                _ => null
+                _ => throw new NotSupportedException($"Data type {dataType} is not supported in Parameter conversion.")
             };
 
         // Create a new Parameter with the name, type and value
