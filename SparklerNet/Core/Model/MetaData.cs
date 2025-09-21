@@ -9,7 +9,7 @@ namespace SparklerNet.Core.Model;
 public record MetaData
 {
     /// <summary>
-    ///     The metric contains part of a multi-part message?
+    ///     Whether the metric contains part of a multi-part message.
     /// </summary>
     public bool? IsMultiPart { get; init; }
 

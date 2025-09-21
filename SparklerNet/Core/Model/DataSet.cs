@@ -19,7 +19,7 @@ public record DataSet
     public List<DataType> Types { get; init; } = [];
 
     /// <summary>
-    ///     Key: Column name, Value: Column of data.
+    ///     Column data. Key: Column name, Value: Column of data.
     /// </summary>
     public Dictionary<string, List<object>> ColumnData { get; set; } = [];
 
