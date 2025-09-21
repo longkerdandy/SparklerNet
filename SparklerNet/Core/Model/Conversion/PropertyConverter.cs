@@ -6,7 +6,7 @@ using ProtoPropertySetList = SparklerNet.Core.Protobuf.Payload.Types.PropertySet
 namespace SparklerNet.Core.Model.Conversion;
 
 /// <summary>
-///     Provides extension methods for converting model objects to Protobuf objects.
+///     Converts between <see cref="PropertyValue" /> and <see cref="ProtoPropertyValue" />.
 /// </summary>
 [PublicAPI]
 public static class PropertyConverter
@@ -152,8 +152,11 @@ public static class PropertyConverter
     /// </summary>
     /// <param name="protoPropertySet">The Protobuf property set to convert.</param>
     /// <returns>The converted property set.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="protoPropertySet" /> is null.</exception>   
-    /// <exception cref="ArgumentException">Thrown when the keys and values arrays in <paramref name="protoPropertySet" /> have different lengths.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="protoPropertySet" /> is null.</exception>
+    /// <exception cref="ArgumentException">
+    ///     Thrown when the keys and values arrays in <paramref name="protoPropertySet" /> have
+    ///     different lengths.
+    /// </exception>
     public static PropertySet ToPropertySet(this ProtoPropertySet protoPropertySet)
     {
         ArgumentNullException.ThrowIfNull(protoPropertySet);

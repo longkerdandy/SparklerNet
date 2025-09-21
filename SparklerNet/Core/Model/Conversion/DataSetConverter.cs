@@ -6,7 +6,7 @@ using ProtoDataSetValue = SparklerNet.Core.Protobuf.Payload.Types.DataSet.Types.
 namespace SparklerNet.Core.Model.Conversion;
 
 /// <summary>
-///     Provides extension methods for converting between DataSet models and Protobuf DataSet objects.
+///     Converts between <see cref="DataSet" /> and <see cref="ProtoDataSet" />.
 /// </summary>
 [PublicAPI]
 public static class DataSetConverter
