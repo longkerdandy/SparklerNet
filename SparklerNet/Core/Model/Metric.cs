@@ -10,33 +10,53 @@ namespace SparklerNet.Core.Model;
 [PublicAPI]
 public record Metric
 {
-    // The friendly name of the metric.
+    /// <summary>
+    ///     The name of the metric.
+    /// </summary>
     public string? Name { get; init; }
 
-    // Representing an optional alias.
+    /// <summary>
+    ///     The alias of the metric.
+    /// </summary>
     public ulong? Alias { get; init; }
 
-    // Milliseconds since epoch.
+    /// <summary>
+    ///     The timestamp of the metric value in milliseconds since epoch.
+    /// </summary>
     public long? Timestamp { get; init; }
 
-    // Sparkplug date type.
+    /// <summary>
+    ///     The date type of the metric value.
+    /// </summary>
     public DataType? DateType { get; init; }
 
-    // The metric represents a historical value?
+    /// <summary>
+    ///     Indicates whether the metric represents a historical value.
+    /// </summary>
     public bool? IsHistorical { get; init; }
 
-    // The metric should be considered as transient?
+    /// <summary>
+    ///     Indicates whether the metric should be considered as transient.
+    /// </summary>
     public bool? IsTransient { get; init; }
 
-    // The metric value is null?
-    public bool? IsNull { get; init; }
+    /// <summary>
+    ///     Indicates whether the metric value is null.
+    /// </summary>
+    public bool IsNull => Value is null;
 
-    // MetaData object associated with the metric.
-    public MetaData? Metadata { get; init; }
+    /// <summary>
+    ///     <see cref="MetaData" /> object associated with the metric.
+    /// </summary>
+    public MetaData? Metadata { get; set; }
 
-    // PropertySet object associated with the metric.
-    public PropertySet? Properties { get; init; }
+    /// <summary>
+    ///     <see cref="PropertySet" /> object associated with the metric.
+    /// </summary>
+    public PropertySet? Properties { get; set; }
 
-    // The metric value.
-    public object? Value { get; init; }
+    /// <summary>
+    ///     The metric value.
+    /// </summary>
+    public object? Value { get; set; }
 }

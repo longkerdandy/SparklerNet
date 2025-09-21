@@ -10,18 +10,28 @@ namespace SparklerNet.Core.Model;
 [PublicAPI]
 public record Template
 {
-    // An optional field representing the version of the Template.
+    /// <summary>
+    ///     The version of the Template.
+    /// </summary>
     public string? Version { get; init; }
 
-    // The members of the Template.
-    public List<Metric> Metrics { get; init; } = [];
+    /// <summary>
+    ///     The members of the Template.
+    /// </summary>
+    public List<Metric> Metrics { get; set; } = [];
 
-    // An optional field representing parameters associated with the Template.
-    public List<Parameter>? Parameters { get; init; }
+    /// <summary>
+    ///     The parameters associated with the Template.
+    /// </summary>
+    public List<Parameter>? Parameters { get; set; }
 
-    // The reference to a Template Definition name if this is a Template Instance.
+    /// <summary>
+    ///     The reference to a Template Definition name if this is a Template Instance.
+    /// </summary>
     public string? TemplateRef { get; init; }
 
-    // This is a Template definition or a Template instance?
+    /// <summary>
+    ///     Indicates whether the Template is a Definition or an Instance.
+    /// </summary>
     public bool IsDefinition { get; init; }
 }
