@@ -4,7 +4,6 @@ namespace SparklerNet.Core.Model;
 
 /// <summary>
 ///     A Sparkplug DataSet object is used to encode matrices of data.
-///     The types array MUST be one of the enumerated values as shown in the Sparkplug Basic Data Types.
 /// </summary>
 [PublicAPI]
 public record DataSet
