@@ -10,15 +10,23 @@ namespace SparklerNet.Core.Model;
 [PublicAPI]
 public record Payload
 {
-    // Milliseconds since epoch.
+    /// <summary>
+    ///     The timestamp of the payload in milliseconds since epoch.
+    /// </summary>
     public long Timestamp { get; init; }
-
-    // An array of metrics representing key/value/datatype values.
-    public List<Metric> Metrics { get; init; } = [];
-
-    // The sequence number. 0 ~ 225
+    
+    /// <summary>
+    ///     The array of metrics in the payload.
+    /// </summary>
+    public List<Metric> Metrics { get; set; } = [];
+    
+    /// <summary>
+    ///     The sequence number of the payload. 0 ~ 225
+    /// </summary>
     public int Seq { get; init; }
-
-    // An array of bytes which can be used for any custom binary encoded data.
+    
+    /// <summary>
+    ///     The array of bytes which can be used for any custom binary encoded data.
+    /// </summary>
     public byte[]? Body { get; init; }
 }
