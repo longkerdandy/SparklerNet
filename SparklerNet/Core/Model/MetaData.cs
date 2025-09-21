@@ -8,27 +8,43 @@ namespace SparklerNet.Core.Model;
 [PublicAPI]
 public record MetaData
 {
-    // The metric contains part of a multi-part message?
+    /// <summary>
+    ///     The metric contains part of a multi-part message?
+    /// </summary>
     public bool? IsMultiPart { get; init; }
 
-    // The content type of the given metric value if applicable.
+    /// <summary>
+    ///     The content type of the given metric value if applicable.
+    /// </summary>
     public string? ContentType { get; init; }
 
-    // The size of the metric value.
+    /// <summary>
+    ///     The size of the metric value.
+    /// </summary>
     public ulong? Size { get; init; }
 
-    // The sequence number of this part of a multipart metric.
-    public ulong? Seq { get; init; }
+    /// <summary>
+    ///     The sequence number of this part of a multipart metric.
+    /// </summary>
+    public long? Seq { get; init; }
 
-    // If this is a file metric, representing the file name.
+    /// <summary>
+    ///     If this is a file metric, representing the file name.
+    /// </summary>
     public string? FileName { get; init; }
 
-    // If this is a file metric, representing the file type.
+    /// <summary>
+    ///     If this is a file metric, representing the file type.
+    /// </summary>
     public string? FileType { get; init; }
 
-    // Byte array or file metric that have a md5sum.
+    /// <summary>
+    ///     Byte array or file metric that have a md5sum.
+    /// </summary>
     public string? Md5 { get; init; }
 
-    // Representing any other pertinent metadata
+    /// <summary>
+    ///     Representing any other pertinent metadata
+    /// </summary>
     public string? Description { get; init; }
 }
