@@ -9,12 +9,18 @@ namespace SparklerNet.Core.Model;
 [PublicAPI]
 public record Parameter
 {
-    // The name of the template parameter.
-    public string? Name { get; init; }
+    /// <summary>
+    ///     The name of the template parameter.
+    /// </summary>
+    public required string Name { get; init; }
 
-    // The template parameter date type.
+    /// <summary>
+    ///     The template parameter date type, MUST be one of the enumerated values as shown in the Sparkplug Basic Data Types.
+    /// </summary>
     public DataType Type { get; init; }
 
-    // The template parameter value.
-    public object? Value { get; init; }
+    /// <summary>
+    ///     The template parameter value.
+    /// </summary>
+    public object? Value { get; set; }
 }
