@@ -75,7 +75,7 @@ public class MetaDataConverterTests
         Assert.False(metaData.IsMultiPart);
         Assert.Equal(string.Empty, metaData.ContentType);
         Assert.Equal(0ul, metaData.Size);
-        Assert.Equal(0L, metaData.Seq);
+        Assert.Equal(0, metaData.Seq);
         Assert.Equal(string.Empty, metaData.FileName);
         Assert.Equal(string.Empty, metaData.FileType);
         Assert.Equal(string.Empty, metaData.Md5);
@@ -103,7 +103,7 @@ public class MetaDataConverterTests
         Assert.True(metaData.IsMultiPart);
         Assert.Equal("application/xml", metaData.ContentType);
         Assert.Equal(2048ul, metaData.Size);
-        Assert.Equal(100L, metaData.Seq);
+        Assert.Equal(100, metaData.Seq);
         Assert.Equal("data.xml", metaData.FileName);
         Assert.Equal("xml", metaData.FileType);
         Assert.Equal("xyz789pqr012", metaData.Md5);
@@ -118,7 +118,7 @@ public class MetaDataConverterTests
             IsMultiPart = true,
             ContentType = "application/octet-stream",
             Size = 4096ul,
-            Seq = 255L,
+            Seq = 255,
             FileName = "binary.dat",
             FileType = "dat",
             Md5 = "hash123456",

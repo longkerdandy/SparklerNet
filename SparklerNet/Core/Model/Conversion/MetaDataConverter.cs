@@ -49,7 +49,7 @@ public static class MetaDataConverter
             IsMultiPart = protoMetaData.IsMultiPart, // Defaults to false if not set
             ContentType = protoMetaData.ContentType, // Will be empty string if not set
             Size = protoMetaData.Size, // Defaults to 0 if not set
-            Seq = (long)protoMetaData.Seq, // Defaults to 0 if not set
+            Seq = (int)protoMetaData.Seq, // Defaults to 0 if not set
             FileName = protoMetaData.FileName, // Will be empty string if not set
             FileType = protoMetaData.FileType, // Will be empty string if not set
             Md5 = protoMetaData.Md5, // Will be empty string if not set

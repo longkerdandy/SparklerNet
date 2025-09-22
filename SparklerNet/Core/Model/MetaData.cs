@@ -24,9 +24,9 @@ public record MetaData
     public ulong? Size { get; init; }
 
     /// <summary>
-    ///     The sequence number of this part of a multipart metric.
+    ///     The sequence number of this part of a multipart metric. 0 ~ 255.
     /// </summary>
-    public long? Seq { get; init; }
+    public int? Seq { get; init; }
 
     /// <summary>
     ///     If this is a file metric, representing the file name.
