@@ -1,9 +1,11 @@
 ﻿using System.Text.Json;
+using Google.Protobuf;
 using JetBrains.Annotations;
 using MQTTnet;
 using MQTTnet.Formatter;
 using MQTTnet.Protocol;
 using SparklerNet.Core.Model;
+using SparklerNet.Core.Model.Conversion;
 using SparklerNet.Core.Options;
 using SparklerNet.Core.Topics;
 
@@ -160,5 +162,51 @@ public class SparkplugHostApplication
 
         // Publish the message
         return await MqttClient.PublishAsync(stateMessage);
+    }
+
+    /// <summary>
+    ///     Publish the Sparkplug NCMD message to the MQTT broker.
+    /// </summary>
+    /// <param name="groupId">The Sparkplug Group ID.</param>
+    /// <param name="edgeNodeId">The Sparkplug Edge Node ID.</param>
+    /// <param name="payload">The Payload to publish.</param>
+    /// <returns>The MQTT Client Publish Result.</returns>
+    protected async Task<MqttClientPublishResult> PublishEdgeNodeCommandMessageAsync(string groupId, string edgeNodeId,
+        Payload payload)
+    {
+        // NCMD messages MUST be published with MQTT QoS equal to 0 and retain equal to false.
+        var ncmdMessage = new MqttApplicationMessageBuilder()
+            .WithTopic(SparkplugTopicFactory.CreateEdgeNodeCommandTopic(_sparkplugOptions.Version, groupId, edgeNodeId))
+            .WithPayload(payload.ToProtoPayload().ToByteArray())
+            .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtMostOnce)
+            .WithRetainFlag(false)
+            .Build();
+
+        // Publish the message
+        return await MqttClient.PublishAsync(ncmdMessage);
+    }
+
+    /// <summary>
+    ///     Publish the Sparkplug DCMD message to the MQTT broker.
+    /// </summary>
+    /// <param name="groupId">The Sparkplug Group ID.</param>
+    /// <param name="edgeNodeId">The Sparkplug Edge Node ID.</param>
+    /// <param name="deviceId">The Sparkplug Device ID.</param>
+    /// <param name="payload">The Payload to publish.</param>
+    /// <returns>The MQTT Client Publish Result.</returns>
+    protected async Task<MqttClientPublishResult> PublishDeviceCommandMessageAsync(string groupId, string edgeNodeId,
+        string deviceId, Payload payload)
+    {
+        // DCMD messages MUST be published with MQTT QoS equal to 0 and retain equal to false.
+        var dcmdMessage = new MqttApplicationMessageBuilder()
+            .WithTopic(SparkplugTopicFactory.CreateDeviceCommandTopic(_sparkplugOptions.Version, groupId, edgeNodeId,
+                deviceId))
+            .WithPayload(payload.ToProtoPayload().ToByteArray())
+            .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtMostOnce)
+            .WithRetainFlag(false)
+            .Build();
+
+        // Publish the message
+        return await MqttClient.PublishAsync(dcmdMessage);
     }
 }

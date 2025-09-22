@@ -28,16 +28,10 @@ public static class PayloadConverter
         };
 
         // Convert and add metrics
-        foreach (var metric in payload.Metrics)
-        {
-            protoPayload.Metrics.Add(metric.ToProtoMetric());
-        }
+        foreach (var metric in payload.Metrics) protoPayload.Metrics.Add(metric.ToProtoMetric());
 
         // Set body if it has a value
-        if (payload.Body != null)
-        {
-            protoPayload.Body = CopyFrom(payload.Body);
-        }
+        if (payload.Body != null) protoPayload.Body = CopyFrom(payload.Body);
 
         return protoPayload;
     }
@@ -54,10 +48,7 @@ public static class PayloadConverter
 
         // Get body bytes if available
         byte[]? bodyBytes = null;
-        if (protoPayload.Body != null && protoPayload.Body.Length > 0)
-        {
-            bodyBytes = protoPayload.Body.ToByteArray();
-        }
+        if (protoPayload.Body != null && protoPayload.Body.Length > 0) bodyBytes = protoPayload.Body.ToByteArray();
 
         // Create payload with all init properties in initializer
         var payload = new Payload
@@ -69,10 +60,7 @@ public static class PayloadConverter
         };
 
         // Convert and add metrics
-        foreach (var metric in protoPayload.Metrics)
-        {
-            payload.Metrics.Add(metric.ToMetric());
-        }
+        foreach (var metric in protoPayload.Metrics) payload.Metrics.Add(metric.ToMetric());
 
         return payload;
     }

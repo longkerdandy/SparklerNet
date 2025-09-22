@@ -24,4 +24,21 @@ public static class SparkplugTopicFactory
     {
         return $"{SparkplugNamespace.FromSparkplugVersion(version)}/STATE/{hostId}";
     }
+
+    /// <summary>
+    ///     The NCMD command topic provides the topic namespace used to send commands to any connected Edge Nodes.
+    /// </summary>
+    public static string CreateEdgeNodeCommandTopic(SparkplugVersion version, string groupId, string edgeNodeId)
+    {
+        return $"{SparkplugNamespace.FromSparkplugVersion(version)}/{groupId}/NCMD/{edgeNodeId}";
+    }
+
+    /// <summary>
+    ///     The DCMD command topic provides the topic namespace used to send commands to any connected Devices.
+    /// </summary>
+    public static string CreateDeviceCommandTopic(SparkplugVersion version, string groupId, string edgeNodeId,
+        string deviceId)
+    {
+        return $"{SparkplugNamespace.FromSparkplugVersion(version)}/{groupId}/DCMD/{edgeNodeId}/{deviceId}";
+    }
 }
