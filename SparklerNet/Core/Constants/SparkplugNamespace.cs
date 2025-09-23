@@ -16,6 +16,7 @@ public static class SparkplugNamespace
     /// </summary>
     /// <param name="version">Sparkplug version</param>
     /// <returns>Sparkplug namespace</returns>
+    /// <exception cref="NotSupportedException">Thrown when the Sparkplug version is not supported.</exception>
     public static string FromSparkplugVersion(SparkplugVersion version)
     {
         return version switch
@@ -30,6 +31,7 @@ public static class SparkplugNamespace
     /// </summary>
     /// <param name="namespace">Sparkplug namespace</param>
     /// <returns>Sparkplug version</returns>
+    /// <exception cref="NotSupportedException">Thrown when the Sparkplug namespace is not supported.</exception>
     public static SparkplugVersion ToSparkplugVersion(string @namespace)
     {
         if (string.Equals(SparkplugBv1, @namespace, StringComparison.OrdinalIgnoreCase)) return SparkplugVersion.V300;
