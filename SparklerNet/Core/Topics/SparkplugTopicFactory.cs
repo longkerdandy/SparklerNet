@@ -20,25 +20,45 @@ public static class SparkplugTopicFactory
     ///     sparkplug_host_id must be replaced with the specific Sparkplug Host ID of this Sparkplug Host Application.
     ///     The topic used for the Host Birth Certificate is identical to the topic used for the Death Certificate.
     /// </summary>
-    public static string CreateHostApplicationStateTopic(SparkplugVersion version, string hostId)
+    /// <param name="version">Sparkplug Version</param>
+    /// <param name="hostId">Host Application ID</param>
+    /// <returns>Generated Host Application Topic</returns>
+    public static string CreateStateTopic(SparkplugVersion version, string hostId)
     {
         return $"{SparkplugNamespace.FromSparkplugVersion(version)}/STATE/{hostId}";
     }
 
     /// <summary>
-    ///     The NCMD command topic provides the topic namespace used to send commands to any connected Edge Nodes.
+    ///     The topic for a Sparkplug Edge Node MUST be of the form namespace/group_id/message_type/edge_node_id
+    ///     where the namespace is replaced with the specific namespace for this version of Sparkplug and the group_id and
+    ///     edge_node_id are replaced with the Group and Edge Node ID for this specific Edge Node.
     /// </summary>
-    public static string CreateEdgeNodeCommandTopic(SparkplugVersion version, string groupId, string edgeNodeId)
+    /// <param name="version">Sparkplug Version</param>
+    /// <param name="groupId">Group ID</param>
+    /// <param name="messageType">Sparkplug Message Type</param>
+    /// <param name="edgeNodeId">Edge Node ID</param>
+    /// <returns>Generated Edge Node Topic</returns>
+    public static string CreateEdgeNodeTopic(SparkplugVersion version, string groupId, SparkplugMessageType messageType,
+        string edgeNodeId)
     {
-        return $"{SparkplugNamespace.FromSparkplugVersion(version)}/{groupId}/NCMD/{edgeNodeId}";
+        return $"{SparkplugNamespace.FromSparkplugVersion(version)}/{groupId}/{messageType.ToString()}/{edgeNodeId}";
     }
 
     /// <summary>
-    ///     The DCMD command topic provides the topic namespace used to send commands to any connected Devices.
+    ///     The topic for a Sparkplug Device MUST be of the form namespace/group_id/message_type/edge_node_id/device_id
+    ///     where the namespace is replaced with the specific namespace for this version of Sparkplug and the group_id,
+    ///     edge_node_id, and device_id are replaced with the Group, Edge Node, and Device ID for this specific Device.
     /// </summary>
-    public static string CreateDeviceCommandTopic(SparkplugVersion version, string groupId, string edgeNodeId,
-        string deviceId)
+    /// <param name="version">Sparkplug Version</param>
+    /// <param name="groupId">Group ID</param>
+    /// <param name="messageType">Sparkplug Message Type</param>
+    /// <param name="edgeNodeId">Edge Node ID</param>
+    /// <param name="deviceId">Device ID</param>
+    /// <returns>Generated Device Topic</returns>
+    public static string CreateDeviceTopic(SparkplugVersion version, string groupId, SparkplugMessageType messageType,
+        string edgeNodeId, string deviceId)
     {
-        return $"{SparkplugNamespace.FromSparkplugVersion(version)}/{groupId}/DCMD/{edgeNodeId}/{deviceId}";
+        return
+            $"{SparkplugNamespace.FromSparkplugVersion(version)}/{groupId}/{messageType.ToString()}/{edgeNodeId}/{deviceId}";
     }
 }

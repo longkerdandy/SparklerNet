@@ -12,7 +12,7 @@ public static class SparkplugNamespace
     private const string SparkplugBv1 = "spBv1.0";
 
     /// <summary>
-    ///     Convert Sparkplug version to Sparkplug namespace.
+    ///     Convert a <see cref="SparkplugVersion" /> to <see cref="SparkplugNamespace" />.
     /// </summary>
     /// <param name="version">Sparkplug version</param>
     /// <returns>Sparkplug namespace</returns>
@@ -21,7 +21,18 @@ public static class SparkplugNamespace
         return version switch
         {
             SparkplugVersion.V300 => SparkplugBv1,
-            _ => throw new ArgumentOutOfRangeException(nameof(version), version, "Unknown Sparkplug version")
+            _ => throw new NotSupportedException($"Not supported Sparkplug version {version}.")
         };
+    }
+
+    /// <summary>
+    ///     Convert a <see cref="SparkplugNamespace" /> to <see cref="SparkplugVersion" />.
+    /// </summary>
+    /// <param name="namespace">Sparkplug namespace</param>
+    /// <returns>Sparkplug version</returns>
+    public static SparkplugVersion ToSparkplugVersion(string @namespace)
+    {
+        if (string.Equals(SparkplugBv1, @namespace, StringComparison.OrdinalIgnoreCase)) return SparkplugVersion.V300;
+        throw new NotSupportedException($"Not supported Sparkplug namespace {@namespace}.");
     }
 }

@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using MQTTnet;
 using MQTTnet.Formatter;
 using MQTTnet.Protocol;
+using SparklerNet.Core.Constants;
 using SparklerNet.Core.Model;
 using SparklerNet.Core.Model.Conversion;
 using SparklerNet.Core.Options;
@@ -98,7 +99,7 @@ public class SparkplugHostApplication
         // Death Certificate will be part of the Will Topic and Will Payload registered in the MQTT CONNECT packet.
         // The MQTT Quality of Service (QoS) MUST be set to 1.
         // The MQTT retain flag for the Death Certificate MUST be set to TRUE.
-        _mqttOptions.WillTopic = SparkplugTopicFactory.CreateHostApplicationStateTopic(
+        _mqttOptions.WillTopic = SparkplugTopicFactory.CreateStateTopic(
             _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId!);
         _mqttOptions.WillPayload =
             JsonSerializer.SerializeToUtf8Bytes(new StatePayload { Online = false, Timestamp = timestamp });
@@ -122,7 +123,7 @@ public class SparkplugHostApplication
     protected async Task SubscribeAsync()
     {
         // Remove the self (STATE) subscription if present.
-        var stateTopic = SparkplugTopicFactory.CreateHostApplicationStateTopic(
+        var stateTopic = SparkplugTopicFactory.CreateStateTopic(
             _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId!);
         _sparkplugOptions.Subscriptions.RemoveAll(topicFilter => topicFilter.Topic == stateTopic);
 
@@ -152,7 +153,7 @@ public class SparkplugHostApplication
         // The MQTT Quality of Service (QoS) MUST be set to 1.
         // The MQTT retain flag for the Birth Certificate MUST be set to TRUE.
         var stateMessage = new MqttApplicationMessageBuilder()
-            .WithTopic(SparkplugTopicFactory.CreateHostApplicationStateTopic(
+            .WithTopic(SparkplugTopicFactory.CreateStateTopic(
                 _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId!))
             .WithPayload(
                 JsonSerializer.SerializeToUtf8Bytes(new StatePayload { Online = online, Timestamp = timestamp }))
@@ -176,7 +177,8 @@ public class SparkplugHostApplication
     {
         // NCMD messages MUST be published with MQTT QoS equal to 0 and retain equal to false.
         var ncmdMessage = new MqttApplicationMessageBuilder()
-            .WithTopic(SparkplugTopicFactory.CreateEdgeNodeCommandTopic(_sparkplugOptions.Version, groupId, edgeNodeId))
+            .WithTopic(SparkplugTopicFactory.CreateEdgeNodeTopic(_sparkplugOptions.Version, groupId,
+                SparkplugMessageType.NCMD, edgeNodeId))
             .WithPayload(payload.ToProtoPayload().ToByteArray())
             .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtMostOnce)
             .WithRetainFlag(false)
@@ -199,8 +201,8 @@ public class SparkplugHostApplication
     {
         // DCMD messages MUST be published with MQTT QoS equal to 0 and retain equal to false.
         var dcmdMessage = new MqttApplicationMessageBuilder()
-            .WithTopic(SparkplugTopicFactory.CreateDeviceCommandTopic(_sparkplugOptions.Version, groupId, edgeNodeId,
-                deviceId))
+            .WithTopic(SparkplugTopicFactory.CreateDeviceTopic(_sparkplugOptions.Version, groupId,
+                SparkplugMessageType.DCMD, edgeNodeId, deviceId))
             .WithPayload(payload.ToProtoPayload().ToByteArray())
             .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtMostOnce)
             .WithRetainFlag(false)
