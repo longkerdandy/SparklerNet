@@ -41,7 +41,7 @@ public static class SparkplugTopicFactory
     public static string CreateEdgeNodeTopic(SparkplugVersion version, string groupId, SparkplugMessageType messageType,
         string edgeNodeId)
     {
-        return $"{SparkplugNamespace.FromSparkplugVersion(version)}/{groupId}/{messageType.ToString()}/{edgeNodeId}";
+        return $"{SparkplugNamespace.FromSparkplugVersion(version)}/{groupId}/{messageType}/{edgeNodeId}";
     }
 
     /// <summary>
@@ -59,6 +59,6 @@ public static class SparkplugTopicFactory
         string edgeNodeId, string deviceId)
     {
         return
-            $"{SparkplugNamespace.FromSparkplugVersion(version)}/{groupId}/{messageType.ToString()}/{edgeNodeId}/{deviceId}";
+            $"{SparkplugNamespace.FromSparkplugVersion(version)}/{groupId}/{messageType}/{edgeNodeId}/{deviceId}";
     }
 }
