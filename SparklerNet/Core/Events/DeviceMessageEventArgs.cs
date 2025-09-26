@@ -7,7 +7,7 @@ namespace SparklerNet.Core.Events;
 /// <summary>
 ///     Event arguments for Sparkplug Device message received events.
 /// </summary>
-/// <param name="version">The Sparkplug specification version</param>  
+/// <param name="version">The Sparkplug specification version</param>
 /// <param name="messageType">The Sparkplug message type</param>
 /// <param name="groupId">The Group ID</param>
 /// <param name="edgeNodeId">The Edge Node ID</param>
@@ -43,7 +43,7 @@ public sealed class DeviceMessageEventArgs(
     ///     The Edge Node ID
     /// </summary>
     public string EdgeNodeId { get; init; } = edgeNodeId;
-    
+
     /// <summary>
     ///     The Device ID
     /// </summary>
@@ -57,5 +57,5 @@ public sealed class DeviceMessageEventArgs(
     /// <summary>
     ///     The original MQTT message received event arguments
     /// </summary>
-    public MqttApplicationMessageReceivedEventArgs MqttEventArgs { get; init; } = mqttEventArgs; 
+    public MqttApplicationMessageReceivedEventArgs MqttEventArgs { get; init; } = mqttEventArgs;
 }

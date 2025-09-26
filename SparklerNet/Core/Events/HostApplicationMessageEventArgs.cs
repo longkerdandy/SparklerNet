@@ -7,7 +7,7 @@ namespace SparklerNet.Core.Events;
 /// <summary>
 ///     Event arguments for Sparkplug Host Application message received events.
 /// </summary>
-/// <param name="version">The Sparkplug specification version</param>  
+/// <param name="version">The Sparkplug specification version</param>
 /// <param name="messageType">The Sparkplug message type</param>
 /// <param name="hostId">The Host Application ID</param>
 /// <param name="payload">The payload of the message</param>
@@ -17,7 +17,7 @@ public sealed class HostApplicationMessageEventArgs(
     SparkplugMessageType messageType,
     string hostId,
     StatePayload payload,
-    MqttApplicationMessageReceivedEventArgs mqttEventArgs) 
+    MqttApplicationMessageReceivedEventArgs mqttEventArgs)
     : EventArgs
 {
     /// <summary>
@@ -29,7 +29,7 @@ public sealed class HostApplicationMessageEventArgs(
     ///     The Sparkplug message type
     /// </summary>
     public SparkplugMessageType MessageType { get; init; } = messageType;
-    
+
     /// <summary>
     ///     The Host Application ID
     /// </summary>
@@ -43,5 +43,5 @@ public sealed class HostApplicationMessageEventArgs(
     /// <summary>
     ///     The original MQTT message received event arguments
     /// </summary>
-    public MqttApplicationMessageReceivedEventArgs MqttEventArgs { get; init; } = mqttEventArgs; 
+    public MqttApplicationMessageReceivedEventArgs MqttEventArgs { get; init; } = mqttEventArgs;
 }

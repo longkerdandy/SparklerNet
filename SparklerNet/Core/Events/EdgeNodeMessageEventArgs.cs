@@ -50,5 +50,5 @@ public sealed class EdgeNodeMessageEventArgs(
     /// <summary>
     ///     The original MQTT message received event arguments
     /// </summary>
-    public MqttApplicationMessageReceivedEventArgs MqttEventArgs { get; init; } = mqttEventArgs; 
+    public MqttApplicationMessageReceivedEventArgs MqttEventArgs { get; init; } = mqttEventArgs;
 }
