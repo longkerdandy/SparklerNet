@@ -1,14 +1,17 @@
-﻿using System.Text.Json;
 using Google.Protobuf;
 using JetBrains.Annotations;
 using MQTTnet;
 using MQTTnet.Formatter;
 using MQTTnet.Protocol;
-using SparklerNet.Core.Constants;
+using SparklerNet.Core.Events;
 using SparklerNet.Core.Model;
 using SparklerNet.Core.Model.Conversion;
 using SparklerNet.Core.Options;
 using SparklerNet.Core.Topics;
+using static SparklerNet.Core.Constants.SparkplugMessageType;
+using System.Text.Json;
+using System.Buffers;
+using ProtoPayload = SparklerNet.Core.Protobuf.Payload;
 
 namespace SparklerNet.HostApplication;
 
@@ -22,9 +25,58 @@ public class SparkplugHostApplication
 {
     private readonly MqttClientOptions _mqttOptions;
     private readonly SparkplugClientOptions _sparkplugOptions;
+    private readonly SparkplugMessageEvents _events = new();
 
     // MQTT Client
     [UsedImplicitly] protected readonly IMqttClient MqttClient;
+    
+    public event Func<EdgeNodeMessageEventArgs, Task> EdgeNodeBirthReceivedAsync
+    {
+        add => _events.EdgeNodeBirthReceivedEvent.AddHandler(value);
+        remove => _events.EdgeNodeBirthReceivedEvent.RemoveHandler(value);
+    }
+    
+    public event Func<EdgeNodeMessageEventArgs, Task> EdgeNodeDeathReceivedAsync
+    {
+        add => _events.EdgeNodeDeathReceivedEvent.AddHandler(value);
+        remove => _events.EdgeNodeDeathReceivedEvent.RemoveHandler(value);
+    }
+    
+    public event Func<EdgeNodeMessageEventArgs, Task> EdgeNodeDataReceivedAsync
+    {
+        add => _events.EdgeNodeDataReceivedEvent.AddHandler(value);
+        remove => _events.EdgeNodeDataReceivedEvent.RemoveHandler(value);
+    }
+    
+    public event Func<DeviceMessageEventArgs, Task> DeviceBirthReceivedAsync
+    {
+        add => _events.DeviceBirthReceivedEvent.AddHandler(value);
+        remove => _events.DeviceBirthReceivedEvent.RemoveHandler(value);
+    }
+    
+    public event Func<DeviceMessageEventArgs, Task> DeviceDeathReceivedAsync
+    {
+        add => _events.DeviceDeathReceivedEvent.AddHandler(value);
+        remove => _events.DeviceDeathReceivedEvent.RemoveHandler(value);
+    }
+    
+    public event Func<DeviceMessageEventArgs, Task> DeviceDataReceivedAsync
+    {
+        add => _events.DeviceDataReceivedEvent.AddHandler(value);
+        remove => _events.DeviceDataReceivedEvent.RemoveHandler(value);
+    }
+    
+    public event Func<HostApplicationMessageEventArgs, Task> StateReceivedAsync
+    {
+        add => _events.StateReceivedEvent.AddHandler(value);
+        remove => _events.StateReceivedEvent.RemoveHandler(value);
+    }
+    
+    public event Func<MqttApplicationMessageReceivedEventArgs, Task> UnsupportedReceivedAsync
+    {
+        add => _events.UnsupportedReceivedEvent.AddHandler(value);
+        remove => _events.UnsupportedReceivedEvent.RemoveHandler(value);
+    }
 
     public SparkplugHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions)
     {
@@ -37,19 +89,22 @@ public class SparkplugHostApplication
         // Create a new MQTT client.
         var factory = new MqttClientFactory();
         MqttClient = factory.CreateMqttClient();
-    }
+
+        // Subscribe to the ApplicationMessageReceived event to process incoming messages
+        MqttClient.ApplicationMessageReceivedAsync += HandleApplicationMessageReceivedAsync;
+    } 
 
     /// <summary>
     ///     Start the Sparkplug Host Application.
     ///     Initialization will be performed in accordance with the Sparkplug specification.
     /// </summary>
-    public async Task Start()
+    public async Task StartAsync()
     {
         // The Sparkplug start up process:
         // 1. Connect to the MQTT Broker and use the Will Message.
         // 2. Subscribe to the MQTT topics.
         // 3. Publish the STATE(Birth Certificate) message.
-        // The timestamp value MUST be the same value set in the previous MQTT CONNECT packet’s Will Message payload.
+        // The timestamp value MUST be the same value set in the previous MQTT CONNECT packet's Will Message payload.
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         await ConnectAsync(timestamp);
         await SubscribeAsync();
@@ -178,7 +233,7 @@ public class SparkplugHostApplication
         // NCMD messages MUST be published with MQTT QoS equal to 0 and retain equal to false.
         var ncmdMessage = new MqttApplicationMessageBuilder()
             .WithTopic(SparkplugTopicFactory.CreateEdgeNodeTopic(_sparkplugOptions.Version, groupId,
-                SparkplugMessageType.NCMD, edgeNodeId))
+                NCMD, edgeNodeId))
             .WithPayload(payload.ToProtoPayload().ToByteArray())
             .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtMostOnce)
             .WithRetainFlag(false)
@@ -202,7 +257,7 @@ public class SparkplugHostApplication
         // DCMD messages MUST be published with MQTT QoS equal to 0 and retain equal to false.
         var dcmdMessage = new MqttApplicationMessageBuilder()
             .WithTopic(SparkplugTopicFactory.CreateDeviceTopic(_sparkplugOptions.Version, groupId,
-                SparkplugMessageType.DCMD, edgeNodeId, deviceId))
+                DCMD, edgeNodeId, deviceId))
             .WithPayload(payload.ToProtoPayload().ToByteArray())
             .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtMostOnce)
             .WithRetainFlag(false)
@@ -210,5 +265,56 @@ public class SparkplugHostApplication
 
         // Publish the message
         return await MqttClient.PublishAsync(dcmdMessage);
+    }
+
+    /// <summary>
+    ///     Handles incoming MQTT messages and triggers appropriate events based on message type.
+    ///     Unsupported message types will be published to the UnsupportedReceived event.
+    /// </summary>
+    [UsedImplicitly]
+    protected async Task HandleApplicationMessageReceivedAsync(MqttApplicationMessageReceivedEventArgs eventArgs)
+    {
+        try
+        {
+            // Parse the topic to determine the message type, throw exception if invalid
+            var topic = eventArgs.ApplicationMessage.Topic;
+            var (version, groupId, messageType, edgeNodeId, deviceId, hostId) = SparkplugTopicParser.ParseTopic(topic);
+
+            // Validate the payload length, throw exception if invalid
+            if (eventArgs.ApplicationMessage.Payload.IsEmpty) 
+                throw new NotSupportedException($"Invalid payload length for topic {topic}.");
+            
+            if (messageType == STATE)
+            {
+                // Parse the payload as STATE message and raise the event
+                var bytes  = new byte[eventArgs.ApplicationMessage.Payload.Length];
+                eventArgs.ApplicationMessage.Payload.CopyTo(bytes );
+                var statePayload = JsonSerializer.Deserialize<StatePayload>(bytes );
+                await _events.StateReceivedEvent.InvokeAsync(new HostApplicationMessageEventArgs(version, messageType, hostId!, statePayload!, eventArgs)).ConfigureAwait(false);
+            }
+            else
+            {
+                // Parse the payload as regular message
+                var protoPayload = ProtoPayload.Parser.ParseFrom(eventArgs.ApplicationMessage.Payload);
+                var payload = protoPayload.ToPayload();
+
+                // Raise the appropriate event based on message type
+                await (messageType switch
+                {
+                    NBIRTH => _events.EdgeNodeBirthReceivedEvent.InvokeAsync(new EdgeNodeMessageEventArgs(version, messageType, groupId!, edgeNodeId!, payload, eventArgs)),
+                    NDEATH => _events.EdgeNodeDeathReceivedEvent.InvokeAsync(new EdgeNodeMessageEventArgs(version, messageType, groupId!, edgeNodeId!, payload, eventArgs)),
+                    NDATA => _events.EdgeNodeDataReceivedEvent.InvokeAsync(new EdgeNodeMessageEventArgs(version, messageType, groupId!, edgeNodeId!, payload, eventArgs)),
+                    DBIRTH => _events.DeviceBirthReceivedEvent.InvokeAsync(new DeviceMessageEventArgs(version, messageType, groupId!, edgeNodeId!, deviceId!, payload, eventArgs)),
+                    DDEATH => _events.DeviceDeathReceivedEvent.InvokeAsync(new DeviceMessageEventArgs(version, messageType, groupId!, edgeNodeId!, deviceId!, payload, eventArgs)),
+                    DDATA => _events.DeviceDataReceivedEvent.InvokeAsync(new DeviceMessageEventArgs(version, messageType, groupId!, edgeNodeId!, deviceId!, payload, eventArgs)),
+                    _ => throw new NotSupportedException($"Not supported Sparkplug message type {messageType} for Host Application.")
+                }).ConfigureAwait(false);
+            }
+        }
+        catch (Exception)
+        {
+            // Handle any exceptions that occur during message processing
+            await _events.UnsupportedReceivedEvent.InvokeAsync(eventArgs).ConfigureAwait(false);
+        }
     }
 }
