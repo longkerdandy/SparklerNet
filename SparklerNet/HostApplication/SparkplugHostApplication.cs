@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Text.Json;
 using Google.Protobuf;
 using JetBrains.Annotations;
@@ -27,9 +26,6 @@ public class SparkplugHostApplication
     private readonly MqttClientOptions _mqttOptions;
     private readonly SparkplugClientOptions _sparkplugOptions;
 
-    // MQTT Client
-    [UsedImplicitly] protected readonly IMqttClient MqttClient;
-
     /// <summary>
     ///     Create a new instance of the Sparkplug Host Application.
     /// </summary>
@@ -50,6 +46,9 @@ public class SparkplugHostApplication
         // Subscribe to the ApplicationMessageReceived event to process incoming messages
         MqttClient.ApplicationMessageReceivedAsync += HandleApplicationMessageReceivedAsync;
     }
+
+    // MQTT Client
+    [UsedImplicitly] public IMqttClient MqttClient { get; }
 
     public event Func<EdgeNodeMessageEventArgs, Task> EdgeNodeBirthReceivedAsync
     {
@@ -93,6 +92,12 @@ public class SparkplugHostApplication
         remove => _events.StateReceivedEvent.RemoveHandler(value);
     }
 
+    public event Func<ConnectedEventArgs, Task> ConnectedReceivedAsync
+    {
+        add => _events.ConnectedReceivedEvent.AddHandler(value);
+        remove => _events.ConnectedReceivedEvent.RemoveHandler(value);
+    }
+
     public event Func<MqttApplicationMessageReceivedEventArgs, Task> UnsupportedReceivedAsync
     {
         add => _events.UnsupportedReceivedEvent.AddHandler(value);
@@ -103,7 +108,7 @@ public class SparkplugHostApplication
     ///     Start the Sparkplug Host Application.
     ///     Initialization will be performed in accordance with the Sparkplug specification.
     /// </summary>
-    public async Task<(MqttClientConnectResult connectResult, MqttClientSubscribeResult subscribeResult)> StartAsync()
+    public async Task<(MqttClientConnectResult connectResult, MqttClientSubscribeResult? subscribeResult)> StartAsync()
     {
         // The Sparkplug start up process:
         // 1. Connect to the MQTT Broker and use the Will Message.
@@ -112,9 +117,14 @@ public class SparkplugHostApplication
         // The timestamp value MUST be the same value set in the previous MQTT CONNECT packet's Will Message payload.
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var connectResult = await ConnectAsync(timestamp);
+
+        // If the connection failed, return the connect result with null subscribe result.
+        if (connectResult.ResultCode != MqttClientConnectResultCode.Success) return (connectResult, null);
+
+        // If the connection is successful, subscribe to the MQTT topics and raise the event.
         var subscribeResult = await SubscribeAsync();
         await PublishStateMessageAsync(true, timestamp);
-
+        await _events.ConnectedReceivedEvent.InvokeAsync(new ConnectedEventArgs(connectResult, subscribeResult));
         return (connectResult, subscribeResult);
     }
 
@@ -297,12 +307,9 @@ public class SparkplugHostApplication
             if (messageType == STATE)
             {
                 // Parse the payload as STATE message and raise the event
-                var bytes = new byte[eventArgs.ApplicationMessage.Payload.Length];
-                eventArgs.ApplicationMessage.Payload.CopyTo(bytes);
-                var statePayload = JsonSerializer.Deserialize<StatePayload>(bytes);
-                await _events.StateReceivedEvent
-                    .InvokeAsync(new HostApplicationMessageEventArgs(version, messageType, hostId!, statePayload!,
-                        eventArgs)).ConfigureAwait(false);
+                var statePayload = StatePayloadConverter.DeserializeStatePayload(eventArgs.ApplicationMessage.Payload);
+                await _events.StateReceivedEvent.InvokeAsync(
+                    new HostApplicationMessageEventArgs(version, messageType, hostId!, statePayload, eventArgs));
             }
             else
             {
@@ -327,12 +334,12 @@ public class SparkplugHostApplication
                         messageType, groupId!, edgeNodeId!, deviceId!, payload, eventArgs)),
                     _ => throw new NotSupportedException(
                         $"Not supported Sparkplug message type {messageType} for Host Application.")
-                }).ConfigureAwait(false);
+                });
             }
         }
         catch (Exception)
         {
-            // Handle any exceptions that occur during message processing
+            // Raise the UnsupportedReceived event
             await _events.UnsupportedReceivedEvent.InvokeAsync(eventArgs).ConfigureAwait(false);
         }
     }
