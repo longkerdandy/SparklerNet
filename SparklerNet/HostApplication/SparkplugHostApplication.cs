@@ -45,6 +45,7 @@ public class SparkplugHostApplication
 
         // Subscribe to the ApplicationMessageReceived event to process incoming messages
         MqttClient.ApplicationMessageReceivedAsync += HandleApplicationMessageReceivedAsync;
+        MqttClient.DisconnectedAsync += HandleDisconnectedAsync;
     }
 
     // MQTT Client
@@ -98,6 +99,12 @@ public class SparkplugHostApplication
         remove => _events.ConnectedReceivedEvent.RemoveHandler(value);
     }
 
+    public event Func<MqttClientDisconnectedEventArgs, Task> DisconnectedReceivedAsync
+    {
+        add => _events.DisconnectedReceivedEvent.AddHandler(value);
+        remove => _events.DisconnectedReceivedEvent.RemoveHandler(value);
+    }
+
     public event Func<MqttApplicationMessageReceivedEventArgs, Task> UnsupportedReceivedAsync
     {
         add => _events.UnsupportedReceivedEvent.AddHandler(value);
@@ -119,9 +126,10 @@ public class SparkplugHostApplication
         var connectResult = await ConnectAsync(timestamp);
 
         // If the connection failed, return the connect result with null subscribe result.
+        // This will trigger the DisconnectedReceivedAsync event.
         if (connectResult.ResultCode != MqttClientConnectResultCode.Success) return (connectResult, null);
 
-        // If the connection is successful, subscribe to the MQTT topics and raise the event.
+        // If the connection is successful, subscribe to the MQTT topics and raise the ConnectedReceivedEvent event.
         var subscribeResult = await SubscribeAsync();
         await PublishStateMessageAsync(true, timestamp);
         await _events.ConnectedReceivedEvent.InvokeAsync(new ConnectedEventArgs(connectResult, subscribeResult));
@@ -340,7 +348,17 @@ public class SparkplugHostApplication
         catch (Exception)
         {
             // Raise the UnsupportedReceived event
-            await _events.UnsupportedReceivedEvent.InvokeAsync(eventArgs).ConfigureAwait(false);
+            await _events.UnsupportedReceivedEvent.InvokeAsync(eventArgs);
         }
+    }
+
+    /// <summary>
+    ///     Handles MQTT client disconnected events and triggers the DisconnectedReceived event.
+    /// </summary>
+    /// <param name="eventArgs">The MQTT client disconnected event arguments.</param>
+    private async Task HandleDisconnectedAsync(MqttClientDisconnectedEventArgs eventArgs)
+    {
+        // Raise the DisconnectedReceived event
+        await _events.DisconnectedReceivedEvent.InvokeAsync(eventArgs);
     }
 }

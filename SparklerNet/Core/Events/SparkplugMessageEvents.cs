@@ -32,6 +32,9 @@ public sealed class SparkplugMessageEvents
     // Sparkplug client connected event
     public AsyncEvent<ConnectedEventArgs> ConnectedReceivedEvent { get; } = new();
 
+    // Sparkplug client disconnected event
+    public AsyncEvent<MqttClientDisconnectedEventArgs> DisconnectedReceivedEvent { get; } = new();
+
     // Unsupported Sparkplug message received event
     public AsyncEvent<MqttApplicationMessageReceivedEventArgs> UnsupportedReceivedEvent { get; } = new();
 }
