@@ -1,10 +1,12 @@
 using System.Text.Json;
 using Google.Protobuf;
 using JetBrains.Annotations;
+using Microsoft.Extensions.Logging;
 using MQTTnet;
 using MQTTnet.Formatter;
 using MQTTnet.Protocol;
 using SparklerNet.Core.Events;
+using SparklerNet.Core.Extensions;
 using SparklerNet.Core.Model;
 using SparklerNet.Core.Model.Conversion;
 using SparklerNet.Core.Options;
@@ -23,6 +25,7 @@ namespace SparklerNet.HostApplication;
 public class SparkplugHostApplication
 {
     private readonly SparkplugMessageEvents _events = new();
+    private readonly ILogger<SparkplugHostApplication> _logger;
     private readonly MqttClientOptions _mqttOptions;
     private readonly SparkplugClientOptions _sparkplugOptions;
 
@@ -31,13 +34,16 @@ public class SparkplugHostApplication
     /// </summary>
     /// <param name="mqttOptions">The MQTT Client Options.</param>
     /// <param name="sparkplugOptions">The Sparkplug Client Options.</param>
-    public SparkplugHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions)
+    /// <param name="logger">The Logger.</param>
+    public SparkplugHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions,
+        ILogger<SparkplugHostApplication> logger)
     {
         // Validations
         ArgumentNullException.ThrowIfNull(sparkplugOptions.HostApplicationId);
 
         _mqttOptions = mqttOptions;
         _sparkplugOptions = sparkplugOptions;
+        _logger = logger;
 
         // Create a new MQTT client.
         var factory = new MqttClientFactory();
@@ -117,6 +123,9 @@ public class SparkplugHostApplication
     /// </summary>
     public async Task<(MqttClientConnectResult connectResult, MqttClientSubscribeResult? subscribeResult)> StartAsync()
     {
+        _logger.LogInformation("Starting Sparkplug Host Application {HostApplicationId}",
+            _sparkplugOptions.HostApplicationId);
+
         // The Sparkplug start up process:
         // 1. Connect to the MQTT Broker and use the Will Message.
         // 2. Subscribe to the MQTT topics.
@@ -127,12 +136,21 @@ public class SparkplugHostApplication
 
         // If the connection failed, return the connect result with null subscribe result.
         // This will trigger the DisconnectedReceivedAsync event.
-        if (connectResult.ResultCode != MqttClientConnectResultCode.Success) return (connectResult, null);
+        if (connectResult.ResultCode != MqttClientConnectResultCode.Success)
+        {
+            _logger.LogWarning(
+                "Failed to start Sparkplug Host Application, unable to connect to MQTT Broker with result {ResultCode}",
+                connectResult.ResultCode);
+            return (connectResult, null);
+        }
 
         // If the connection is successful, subscribe to the MQTT topics and raise the ConnectedReceivedEvent event.
         var subscribeResult = await SubscribeAsync();
         await PublishStateMessageAsync(true, timestamp);
         await _events.ConnectedReceivedEvent.InvokeAsync(new ConnectedEventArgs(connectResult, subscribeResult));
+
+        _logger.LogInformation("Successfully started Sparkplug Host Application {HostApplicationId}.",
+            _sparkplugOptions.HostApplicationId);
         return (connectResult, subscribeResult);
     }
 
@@ -142,9 +160,15 @@ public class SparkplugHostApplication
     /// </summary>
     public async Task StopAsync()
     {
+        _logger.LogInformation("Stopping Sparkplug Host Application {HostApplicationId}",
+            _sparkplugOptions.HostApplicationId);
+
         // Publish the STATE(Death Certificate) message.
         await PublishStateMessageAsync(false, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         await MqttClient.DisconnectAsync();
+
+        _logger.LogInformation("Successfully stopped Sparkplug Host Application {HostApplicationId}.",
+            _sparkplugOptions.HostApplicationId);
     }
 
     /// <summary>
@@ -170,6 +194,8 @@ public class SparkplugHostApplication
             case MqttProtocolVersion.Unknown:
             case MqttProtocolVersion.V310:
             default:
+                _logger.LogError("Trying to connect to MQTT Broker with unsupported protocol version {ProtocolVersion}",
+                    _mqttOptions.ProtocolVersion);
                 throw new ArgumentOutOfRangeException(nameof(_mqttOptions.ProtocolVersion),
                     _mqttOptions.ProtocolVersion,
                     "Unsupported MQTT protocol version");
@@ -220,10 +246,13 @@ public class SparkplugHostApplication
             new MqttTopicFilterBuilder().WithTopic(stateTopic).WithAtLeastOnceQoS().Build());
 
         // Add the subscriptions to the subscribe options.
-        var subscribeOptions = new MqttClientSubscribeOptionsBuilder();
-        foreach (var subscription in _sparkplugOptions.Subscriptions) subscribeOptions.WithTopicFilter(subscription);
+        var optionsBuilder = new MqttClientSubscribeOptionsBuilder();
+        foreach (var subscription in _sparkplugOptions.Subscriptions) optionsBuilder.WithTopicFilter(subscription);
+        var result = await MqttClient.SubscribeAsync(optionsBuilder.Build());
 
-        return await MqttClient.SubscribeAsync(subscribeOptions.Build());
+        _logger.LogInformation("Subscribing to MQTT Broker with Topics: {Result}", result.ToFormattedString());
+
+        return result;
     }
 
     /// <summary>
@@ -244,8 +273,7 @@ public class SparkplugHostApplication
             .WithRetainFlag()
             .Build();
 
-        // Publish the message
-        return await MqttClient.PublishAsync(stateMessage);
+        return await PublishMessageAsync(stateMessage, "STATE");
     }
 
     /// <summary>
@@ -267,8 +295,7 @@ public class SparkplugHostApplication
             .WithRetainFlag(false)
             .Build();
 
-        // Publish the message
-        return await MqttClient.PublishAsync(ncmdMessage);
+        return await PublishMessageAsync(ncmdMessage, "NCMD");
     }
 
     /// <summary>
@@ -291,8 +318,27 @@ public class SparkplugHostApplication
             .WithRetainFlag(false)
             .Build();
 
-        // Publish the message
-        return await MqttClient.PublishAsync(dcmdMessage);
+        return await PublishMessageAsync(dcmdMessage, "DCMD");
+    }
+
+    /// <summary>
+    ///     Publishes a MQTT message and logs the result.
+    /// </summary>
+    /// <param name="message">The MQTT message to publish.</param>
+    /// <param name="messageType">The type of message being published (for logging purposes).</param>
+    /// <returns>The MQTT Client Publish Result.</returns>
+    [UsedImplicitly]
+    protected async Task<MqttClientPublishResult> PublishMessageAsync(MqttApplicationMessage message, string messageType)
+    {
+        var result = await MqttClient.PublishAsync(message);
+        if (!result.IsSuccess)
+            _logger.LogWarning("Failed to publish {MessageType} message to topic {Topic} with result {ResultCode}",
+                messageType, message.Topic, result.ReasonCode);
+        else
+            _logger.LogInformation(
+                "Successfully published {MessageType} message to topic {Topic} with result {ResultCode}", messageType,
+                message.Topic, result.ReasonCode);
+        return result;
     }
 
     /// <summary>
@@ -311,6 +357,8 @@ public class SparkplugHostApplication
             // Validate the payload length, throw exception if invalid
             if (eventArgs.ApplicationMessage.Payload.IsEmpty)
                 throw new NotSupportedException($"Invalid payload length for topic {topic}.");
+
+            _logger.LogInformation("Received {MessageType} message from topic {Topic}", messageType, topic);
 
             if (messageType == STATE)
             {
@@ -356,8 +404,11 @@ public class SparkplugHostApplication
     ///     Handles MQTT client disconnected events and triggers the DisconnectedReceived event.
     /// </summary>
     /// <param name="eventArgs">The MQTT client disconnected event arguments.</param>
-    private async Task HandleDisconnectedAsync(MqttClientDisconnectedEventArgs eventArgs)
+    [UsedImplicitly]
+    protected async Task HandleDisconnectedAsync(MqttClientDisconnectedEventArgs eventArgs)
     {
+        _logger.LogInformation("MQTT client disconnected unexpectedly with reason {Reason}", eventArgs.Reason);
+
         // Raise the DisconnectedReceived event
         await _events.DisconnectedReceivedEvent.InvokeAsync(eventArgs);
     }

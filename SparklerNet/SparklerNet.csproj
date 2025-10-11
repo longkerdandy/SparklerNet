@@ -9,6 +9,7 @@
     <ItemGroup>
         <PackageReference Include="Google.Protobuf" Version="3.32.1"/>
         <PackageReference Include="JetBrains.Annotations" Version="2025.2.2"/>
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.9"/>
         <PackageReference Include="MQTTnet" Version="5.0.1.1416"/>
     </ItemGroup>
 
