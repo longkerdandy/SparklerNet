@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SparklerNet", "SparklerNet\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SparklerNet.Tests", "SparklerNet.Tests\SparklerNet.Tests.csproj", "{7D5D5C89-7B0E-4A8C-A9F1-72F2B4D9A173}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SparklerNet.Samples", "SparklerNet.Samples\SparklerNet.Samples.csproj", "{BDC1BAE6-E958-457E-8C90-AB059E4D4EC6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{7D5D5C89-7B0E-4A8C-A9F1-72F2B4D9A173}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7D5D5C89-7B0E-4A8C-A9F1-72F2B4D9A173}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7D5D5C89-7B0E-4A8C-A9F1-72F2B4D9A173}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BDC1BAE6-E958-457E-8C90-AB059E4D4EC6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BDC1BAE6-E958-457E-8C90-AB059E4D4EC6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BDC1BAE6-E958-457E-8C90-AB059E4D4EC6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BDC1BAE6-E958-457E-8C90-AB059E4D4EC6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

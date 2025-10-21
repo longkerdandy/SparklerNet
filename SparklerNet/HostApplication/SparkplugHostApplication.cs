@@ -283,9 +283,11 @@ public class SparkplugHostApplication
     /// <param name="edgeNodeId">The Sparkplug Edge Node ID.</param>
     /// <param name="payload">The Payload to publish.</param>
     /// <returns>The MQTT Client Publish Result.</returns>
-    protected async Task<MqttClientPublishResult> PublishEdgeNodeCommandMessageAsync(string groupId, string edgeNodeId,
+    public async Task<MqttClientPublishResult> PublishEdgeNodeCommandMessageAsync(string groupId, string edgeNodeId,
         Payload payload)
     {
+        // TODO: Validate the group ID and edge node ID and the payload.
+
         // NCMD messages MUST be published with MQTT QoS equal to 0 and retain equal to false.
         var ncmdMessage = new MqttApplicationMessageBuilder()
             .WithTopic(SparkplugTopicFactory.CreateEdgeNodeTopic(_sparkplugOptions.Version, groupId,
@@ -306,9 +308,11 @@ public class SparkplugHostApplication
     /// <param name="deviceId">The Sparkplug Device ID.</param>
     /// <param name="payload">The Payload to publish.</param>
     /// <returns>The MQTT Client Publish Result.</returns>
-    protected async Task<MqttClientPublishResult> PublishDeviceCommandMessageAsync(string groupId, string edgeNodeId,
+    public async Task<MqttClientPublishResult> PublishDeviceCommandMessageAsync(string groupId, string edgeNodeId,
         string deviceId, Payload payload)
     {
+        // TODO: Validate the group ID and edge node ID and the payload.
+
         // DCMD messages MUST be published with MQTT QoS equal to 0 and retain equal to false.
         var dcmdMessage = new MqttApplicationMessageBuilder()
             .WithTopic(SparkplugTopicFactory.CreateDeviceTopic(_sparkplugOptions.Version, groupId,
@@ -328,7 +332,8 @@ public class SparkplugHostApplication
     /// <param name="messageType">The type of message being published (for logging purposes).</param>
     /// <returns>The MQTT Client Publish Result.</returns>
     [UsedImplicitly]
-    protected async Task<MqttClientPublishResult> PublishMessageAsync(MqttApplicationMessage message, string messageType)
+    protected async Task<MqttClientPublishResult> PublishMessageAsync(MqttApplicationMessage message,
+        string messageType)
     {
         var result = await MqttClient.PublishAsync(message);
         if (!result.IsSuccess)
@@ -388,6 +393,7 @@ public class SparkplugHostApplication
                         messageType, groupId!, edgeNodeId!, deviceId!, payload, eventArgs)),
                     DDATA => _events.DeviceDataReceivedEvent.InvokeAsync(new DeviceMessageEventArgs(version,
                         messageType, groupId!, edgeNodeId!, deviceId!, payload, eventArgs)),
+                    NCMD or DCMD => Task.CompletedTask,
                     _ => throw new NotSupportedException(
                         $"Not supported Sparkplug message type {messageType} for Host Application.")
                 });
@@ -407,9 +413,16 @@ public class SparkplugHostApplication
     [UsedImplicitly]
     protected async Task HandleDisconnectedAsync(MqttClientDisconnectedEventArgs eventArgs)
     {
-        _logger.LogInformation("MQTT client disconnected unexpectedly with reason {Reason}", eventArgs.Reason);
+        if (eventArgs.Reason == MqttClientDisconnectReason.NormalDisconnection)
+        {
+            _logger.LogInformation("MQTT client disconnected normally.");
+        }
+        else
+        {
+            _logger.LogInformation("MQTT client disconnected unexpectedly with reason {Reason}", eventArgs.Reason);
 
-        // Raise the DisconnectedReceived event
-        await _events.DisconnectedReceivedEvent.InvokeAsync(eventArgs);
+            // Raise the DisconnectedReceived event
+            await _events.DisconnectedReceivedEvent.InvokeAsync(eventArgs);
+        }
     }
 }
