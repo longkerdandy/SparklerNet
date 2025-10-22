@@ -50,237 +50,37 @@ We adopt the standard Git Flow branching model, which includes the following mai
 
 ### Initialize Project (Already Completed)
 
-```bash
-# Switch to main branch
-git checkout main
-
-# Create develop branch
-git checkout -b develop
-
-# Push develop branch to remote repository
-git push -u origin develop
-```
+Create the initial `develop` branch from `main` and push it to the remote repository.
 
 ### Develop New Features
 
-```bash
-# Ensure you start from the latest develop branch
-git checkout develop
-git pull origin develop
-
-# Create a new feature branch
-git checkout -b feature/my-new-feature
-
-# After development is complete, commit changes
-git add .
-git commit -m "feat: Implement my new feature"
-
-# Push feature branch to remote repository
-git push -u origin feature/my-new-feature
-
-# Create a Pull Request for code review
-# After code review and approval, merge to develop branch
-git checkout develop
-git pull origin develop
-git merge --no-ff feature/my-new-feature
-
-# Push merged develop to remote
-git push origin develop
-
-# Delete local feature branch
-git branch -d feature/my-new-feature
-
-# Delete remote feature branch
-git push origin --delete feature/my-new-feature
-```
+1. Start from the latest `develop` branch.
+2. Create a new feature branch with an appropriate name.
+3. Implement the feature and commit changes.
+4. Push the feature branch to the remote repository.
+5. Create a Pull Request to merge the feature branch into `develop`.
+6. Address any review comments and ensure CI/CD checks pass.
+7. After approval, merge the Pull Request and delete the feature branch.
 
 ### Prepare a Release
 
-```bash
-# Ensure develop branch is up to date
-git checkout develop
-git pull origin develop
-
-# Create release branch
-git checkout -b release/1.0.0
-
-# Update version numbers and perform necessary preparation
-git add .
-git commit -m "chore: Bump version to 1.0.0"
-
-# Push release branch to remote repository
-git push -u origin release/1.0.0
-
-# Run final tests and fix any critical issues
-# (Make commits as needed for fixes)
-
-# After release preparation is complete, merge to main branch
-git checkout main
-git pull origin main
-git merge --no-ff release/1.0.0
-
-# Tag the release
-git tag -a v1.0.0 -m "Release version 1.0.0"
-
-# Push the tag to remote repository
-git push origin v1.0.0
-
-# Push the updated main branch
-git push origin main
-
-# Also merge the release branch back to develop branch
-git checkout develop
-git pull origin develop
-git merge --no-ff release/1.0.0
-
-# Push merged develop to remote
-git push origin develop
-
-# Delete release branch
-git branch -d release/1.0.0
-git push origin --delete release/1.0.0
-```
+1. Start from the latest `develop` branch.
+2. Create a new release branch with the version number.
+3. Update version numbers and perform final preparations.
+4. Push the release branch to the remote repository.
+5. Run final tests and make any necessary fixes.
+6. Create two Pull Requests:
+   - One to merge into `main`
+   - One to merge back into `develop`
+7. After approval and testing, merge both Pull Requests, tag the release, and delete the release branch.
 
 ### Fix Critical Issues in Production
 
-```bash
-# Create hotfix branch from main branch
-git checkout main
-git pull origin main
-git checkout -b hotfix/1.0.1
-
-# After fixing the issue, commit changes
-git add .
-git commit -m "fix: Resolve critical production issue"
-
-# Push hotfix branch to remote for review
-git push -u origin hotfix/1.0.1
-
-# After review, merge back to main branch
-git checkout main
-git merge --no-ff hotfix/1.0.1
-
-# Tag the hotfix
-git tag -a v1.0.1 -m "Hotfix version 1.0.1"
-
-# Push the tag to remote repository
-git push origin v1.0.1
-
-# Push the updated main branch
-git push origin main
-
-# Also merge the hotfix back to develop branch
-git checkout develop
-git pull origin develop
-git merge --no-ff hotfix/1.0.1
-
-# Push merged develop to remote
-git push origin develop
-
-# Delete hotfix branch
-git branch -d hotfix/1.0.1
-git push origin --delete hotfix/1.0.1
-```
-
-## Best Practices
-
-### Branch Management
-
-1. **Branch Naming**:
-   - Use clear, descriptive branch names
-   - Follow consistent naming conventions
-   - Example formats:
-     - `feature/user-authentication`
-     - `release/2.1.0`
-     - `hotfix/fix-memory-leak`
-     - `bugfix/correct-api-endpoint`
-
-2. **Branch Lifecycle**:
-   - Create branches only when needed
-   - Keep feature branches small and focused
-   - Delete branches after they've been merged
-   - Avoid long-lived branches to prevent merge conflicts
-
-### Commit Guidelines
-
-3. **Commit Messages**:
-   - Write meaningful commit messages following this format:
-   ```
-   <type>: <description>
-   
-   <detailed description (optional)>
-   ```
-   - Types:
-     - `feat`: New feature
-     - `fix`: Bug fix
-     - `docs`: Documentation changes
-     - `style`: Code style changes (formatting, etc.)
-     - `refactor`: Code changes that neither fix a bug nor add a feature
-     - `test`: Adding or updating tests
-     - `chore`: Changes to build process or auxiliary tools
-   - Keep the first line short (50 chars or less)
-   - Use imperative mood ("Add feature" not "Added feature")
-   - Reference issue numbers when applicable
-
-4. **Commit Frequency**:
-   - Commit early and often
-   - Each commit should represent a logical unit of work
-   - Avoid large, monolithic commits
-
-### Collaboration Practices
-
-5. **Code Reviews**:
-   - All code should be reviewed via Pull Requests before merging
-   - At least one approval should be required
-   - Discuss and resolve all comments before merging
-
-6. **Synchronization**:
-   - Pull the latest changes from remote repositories regularly
-   - Fetch and merge changes from `develop` into long-running feature branches to avoid large merge conflicts
-   - Communicate with team members about ongoing work
-
-7. **Continuous Integration**:
-   - Run tests locally before pushing code
-   - Ensure all CI checks pass before merging to `develop` or `main`
-
-### Release Management
-
-8. **Versioning**:
-   - Follow semantic versioning: MAJOR.MINOR.PATCH
-   - MAJOR: Incompatible API changes
-   - MINOR: Backward-compatible new features
-   - PATCH: Backward-compatible bug fixes
-   - Update version numbers in the appropriate files
-
-9. **Release Documentation**:
-   - Maintain a changelog documenting changes in each release
-   - Include version numbers, dates, and summaries of changes
-
-## Special Cases and Tips
-
-1. **Handling Merge Conflicts**:
-   - Address conflicts promptly
-   - Understand the changes causing conflicts
-   - Test thoroughly after resolving conflicts
-
-2. **Working with Remote Teams**:
-   - Communicate branch usage and intentions
-   - Use branch protection rules to enforce workflow
-   - Consider time zone differences when planning merges
-
-3. **Recovering from Mistakes**:
-   - Use `git revert` for undoing public changes
-   - Be cautious with `git reset` on shared branches
-   - Consult with team members before force-pushing
-
-4. **Feature Flags**:
-   - Consider using feature flags for larger changes
-   - This allows merging incomplete features to `develop` without affecting functionality
-
-5. **Document Updates**:
-   - Update this document as workflow evolves
-   - Ensure all team members are aware of changes to the process
-
----
-
-Following this Git Flow workflow will help us better manage code versions, improve development efficiency, and ensure code quality throughout the SparklerNet project lifecycle.
+1. Start from the latest `main` branch.
+2. Create a new hotfix branch with an appropriate name or version number.
+3. Fix the critical issue and commit changes.
+4. Push the hotfix branch to the remote repository.
+5. Create two Pull Requests:
+   - One to merge into `main`
+   - One to merge into `develop`
+6. After expedited approval, merge both Pull Requests, tag the hotfix, and delete the hotfix branch.
