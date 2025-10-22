@@ -72,11 +72,11 @@ public class StatePayloadConverterTests
     [Fact]
     public void DeserializeStatePayload_NullJsonString_ThrowsArgumentNullException()
     {
-        // 当JSON字符串恰好是"null"时，JsonSerializer.Deserialize会返回null
+        // When JSON string is exactly "null", JsonSerializer.Deserialize returns null
         var nullJsonBytes = Encoding.UTF8.GetBytes("null");
         var sequence = new ReadOnlySequence<byte>(nullJsonBytes);
 
-        // 验证DeserializeStatePayload方法在结果为null时抛出ArgumentNullException
+        // Verify DeserializeStatePayload method throws ArgumentNullException when result is null
         Assert.Throws<ArgumentNullException>(() => StatePayloadConverter.DeserializeStatePayload(sequence));
     }
 }
