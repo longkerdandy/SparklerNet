@@ -23,24 +23,30 @@ The library aims to fully implement the complete Sparkplug protocol, with planne
 - .NET 9.0 SDK or later
 - MQTT protocol-compatible message broker (e.g., Mosquitto, HiveMQ)
 
-## Roadmap (1.0.0 Release)
+## Roadmap - Release v1.0.0
 
 ### Core Functionality
 
-- ✅ MQTT connection with Sparkplug-compliant Will message
+- ✅ Connection to MQTT brokers v3.1.1 or v5.0
+- ✅ Connection using TCP, TCP+TLS and WebSockets
+- ✅ Support for Sparkplug B data types (Int8/16/32/64, UInt8/16/32/64, Float, Double, Boolean, String, DateTime, Text, UUID, DataSet, Bytes, File, Template, PropertySet, PropertySetList)
+- ⬜ Support for Sparkplug B array data types (Int8Array, Int16Array, Int32Array, Int64Array, UInt8Array, UInt16Array, UInt32Array, UInt64Array, FloatArray, DoubleArray, BooleanArray, StringArray, DateTimeArray)
+
+### Host Application
+
+- ✅ Sparkplug-compliant Will message
 - ✅ STATE message publishing (Birth/Death certificates)
-- ✅ MQTT topic subscription management
-- ✅ Wildcard topic support (spBv1.0/#)
+- ✅ Deafult wildcard topic support (spBv1.0/#)
 - ✅ Specific group and edge node subscription support
-- ✅ Message parsing and event handling
-- ✅ Disconnect handling and reconnection events
+- ⬜ Sparkplug Host Application Message Ordering
+- ⬜ Mapping between Metric's name and alias
 
 ### Message Processing
 
 - ✅ Edge Node message handling (NBIRTH, NDEATH, NDATA)
 - ✅ Device message handling (DBIRTH, DDEATH, DDATA)
-- ✅ STATE message processing
-- ✅ Unsupported message type handling
+- ✅ STATE message handling
+- ✅ Error or unsupported message handling
 
 ### Command Capabilities
 
@@ -61,9 +67,6 @@ The library aims to fully implement the complete Sparkplug protocol, with planne
 ### Additional Features
 
 - ⬜ Reconnection logic with exponential backoff
-- ⬜ Message persistence
-- ⬜ Metrics collection
-- ⬜ Enhanced logging capabilities
 - ⬜ Configuration validation
 
 ## Installation
@@ -88,7 +91,6 @@ Here's a simple example of a Sparkplug host application:
 
 ```csharp
 // Create MQTT client options
-var mqttFactory = new MqttClientFactory();
 var mqttOptions = new MqttClientOptionsBuilder()
     .WithTcpServer("localhost", 1883)
     .WithProtocolVersion(MqttProtocolVersion.V500)
@@ -97,7 +99,8 @@ var mqttOptions = new MqttClientOptionsBuilder()
 // Create Sparkplug client options
 var sparkplugOptions = new SparkplugClientOptions
 {
-    HostApplicationId = "MyHostApplication"
+    HostApplicationId = "MyHostApplication",
+    Version = SparkplugVersion.V300
 };
 
 // Create logger
@@ -110,17 +113,49 @@ var logger = loggerFactory.CreateLogger<SparkplugHostApplication>();
 // Create and start host application
 var hostApplication = new SparkplugHostApplication(mqttOptions, sparkplugOptions, logger);
 
-// Subscribe to events
-SubscribeToEvents(hostApplication);
+// Subscribe to DBIRTH event
+hostApplication.DeviceBirthReceivedAsync += args => {
+    Console.WriteLine($"Received DBIRTH message from Group={args.GroupId}, Node={args.EdgeNodeId}, Device={args.DeviceId}");
+    // Device birth message can be processed here
+    return Task.CompletedTask;
+};
 
 // Start the application
 await hostApplication.StartAsync();
 
-// Example of sending a command
-var payload = new Payload();
-// Configure payload...
+// Example of sending a Device Rebirth command
+var payload = new Payload
+{
+    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+    Metrics =
+    {
+        new Metric
+        {
+            Name = "Device Control/Rebirth",
+            DateType = DataType.Boolean,
+            Value = true
+        }
+    }
+};
 await hostApplication.PublishDeviceCommandMessageAsync("myGroup", "myEdgeNode", "myDevice", payload);
+
+// Stop the application
+await hostApplication.StopAsync();
 ```
+
+## Sample Application
+
+The project includes a comprehensive sample named `SimpleHostApplication` that demonstrates a complete Sparkplug Host Application implementation with the following features:
+
+- **Interactive Command-Line Interface**: Provides a user-friendly console interface with commands for controlling the application lifecycle and sending commands
+- **Complete Event Handling**: Demonstrates subscription and processing of all Sparkplug message types (NBIRTH, NDATA, NDEATH, DBIRTH, DDATA, DDEATH, STATE)
+- **Robust Error Handling**: Includes comprehensive exception handling throughout the application lifecycle
+- **Advanced Logging System**: Implements structured logging using Serilog, providing detailed information about message reception and processing
+- **Command Sending Capabilities**: Allows sending rebirth commands to both Edge Nodes and Devices with customizable parameters
+- **User-Friendly Input**: Features command prompts with default values for improved user experience
+- **Detailed Data Display**: Shows comprehensive information about received messages including timestamps, sequences, and all metrics with their types and values
+
+Please refer to the `SparklerNet.Samples` project for the complete implementation and to see these features in action.
 
 ## Project Structure
 
@@ -153,16 +188,11 @@ SparklerNet supports the following Sparkplug B message types:
 - **DCMD**: Device command
 - **STATE**: Host application state message
 
-## Sample Application
-
-The project includes a sample named `SimpleHostApplication` that demonstrates how to initialize, connect, receive messages, and send commands. Please refer to the `SparklerNet.Samples` project for more details.
-
 ## Dependencies
 
 - Google.Protobuf (3.32.1)
 - Microsoft.Extensions.Logging (9.0.9)
 - MQTTnet (5.0.1.1416)
-- JetBrains.Annotations (2025.2.2)
 
 ## Contribution Guidelines
 
@@ -175,8 +205,4 @@ Contributions via Pull Requests and Issues are welcome. Before submitting code, 
 
 ## License
 
-[MIT](LICENSE)
-
-## Acknowledgements
-
-The SparklerNet project is inspired by the Eclipse Sparkplug specification and aims to provide .NET developers with an easy-to-use implementation of the Sparkplug protocol.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
