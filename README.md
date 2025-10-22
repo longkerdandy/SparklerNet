@@ -198,7 +198,7 @@ SparklerNet supports the following Sparkplug B message types:
 
 Contributions via Pull Requests and Issues are welcome. Before submitting code, please ensure:
 
-1. Follow the project's code style
+1. Follow the project's code style and [Git Flow](GIT_FLOW.md)
 2. Add necessary tests
 3. Ensure all tests pass
 4. Provide detailed code explanations
