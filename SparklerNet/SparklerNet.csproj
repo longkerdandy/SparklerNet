@@ -1,10 +1,32 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <!-- Core Project Settings -->
         <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        
+        <!-- Version Information -->
         <Version>0.9.0</Version>
+        
+        <!-- NuGet Package Basic Info -->
+        <PackageId>SparklerNet</PackageId>
+        <Authors>Dennis Gu</Authors>
+        <Description>An open-source Sparkplug Client Library for .NET 9.0 or later</Description>
+        <PackageTags>mqtt sparkplug iiot industrial-40</PackageTags>
+        
+        <!-- Link Information -->
+        <PackageProjectUrl>https://github.com/longkerdandy/SparklerNet</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/longkerdandy/SparklerNet</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        
+        <!-- License Information -->
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        
+        <!-- Build Configuration -->
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     </PropertyGroup>
 
     <ItemGroup>
