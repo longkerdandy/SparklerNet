@@ -40,15 +40,9 @@ We adopt the standard Git Flow branching model, which includes the following mai
   - Merged to both `main` and `develop` branches upon completion
   - Naming convention: `hotfix/short-description` or `hotfix/x.y.z`
 
-- **`bugfix/*`**: Bug fix branches (optional)
-  - Created from the `develop` branch
-  - Used for fixing non-critical bugs that don't require hotfixes
-  - Merged back to `develop` branch upon completion
-  - Naming convention: `bugfix/descriptive-name`
-
 ## Workflow Steps
 
-### Initialize Project (Already Completed)
+### Initialize Project
 
 Create the initial `develop` branch from `main` and push it to the remote repository.
 
@@ -72,7 +66,7 @@ Create the initial `develop` branch from `main` and push it to the remote reposi
 6. Create two Pull Requests:
    - One to merge into `main`
    - One to merge back into `develop`
-7. After approval and testing, merge both Pull Requests, tag the release, and delete the release branch.
+7. After approval and testing, merge both Pull Requests, tag the release on the `main` branch, and delete the release branch.
 
 ### Fix Critical Issues in Production
 
@@ -83,4 +77,4 @@ Create the initial `develop` branch from `main` and push it to the remote reposi
 5. Create two Pull Requests:
    - One to merge into `main`
    - One to merge into `develop`
-6. After expedited approval, merge both Pull Requests, tag the hotfix, and delete the hotfix branch.
+6. After expedited approval, merge both Pull Requests, tag the hotfix on the `main` branch, and delete the hotfix branch.
