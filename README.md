@@ -1,7 +1,11 @@
 # SparklerNet
 
+[![License](https://img.shields.io/github/license/longkerdandy/SparklerNet)](https://github.com/longkerdandy/SparklerNet/blob/main/LICENSE)
+[![Language](https://img.shields.io/github/languages/top/longkerdandy/SparklerNet)](https://github.com/longkerdandy/SparklerNet)
 [![.NET](https://github.com/longkerdandy/SparklerNet/actions/workflows/dotnet.yml/badge.svg)](https://github.com/longkerdandy/SparklerNet/actions/workflows/dotnet.yml)
 [![CodeQL Advanced](https://github.com/longkerdandy/SparklerNet/actions/workflows/codeql.yml/badge.svg)](https://github.com/longkerdandy/SparklerNet/actions/workflows/codeql.yml)
+[![NuGet Version](https://img.shields.io/nuget/v/SparklerNet)](https://www.nuget.org/packages/SparklerNet/)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/SparklerNet)](https://www.nuget.org/packages/SparklerNet/)
 
 ## Project Introduction
 
