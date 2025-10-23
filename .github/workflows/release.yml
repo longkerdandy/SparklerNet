@@ -1,0 +1,68 @@
+﻿name: Publish to NuGet (Trusted)
+
+# Only trigger for Tags that comply with SemVer specifications (e.g., v1.0.0, v2.3.4-beta.1, v3.1.0+20240101)
+# Matching rule: v + number.number.number + optional pre-release info (starting with -) + optional build info (starting with +)
+on:
+  push:
+    tags: [ 'v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+)?' ]
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for NuGet OIDC authorization
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history to verify branch association
+
+      # Verify the tag is associated with the main branch
+      - name: Ensure tag is on main branch
+        run: |
+          TAG_COMMIT=$(git rev-parse ${{ github.ref }})
+          if ! git merge-base --is-ancestor $TAG_COMMIT origin/main; then
+            echo "Error: Tag ${{ github.ref_name }} is not associated with main branch."
+            exit 1
+          fi
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      # Extract version from tag (e.g., v1.0.0 → 1.0.0; v2.3.4-beta.1 → 2.3.4-beta.1)
+      - name: Extract version number from tag
+        id: get_version
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          VERSION="${TAG_NAME#v}"  # Remove "v" prefix
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      # Build and pack ONLY the SparklerNet project
+      - name: Build and pack SparklerNet
+        run: |
+          dotnet restore --no-cache
+          dotnet build ./SparklerNet/SparklerNet.csproj \
+            --configuration Release \
+            --no-restore \
+            /p:Version=${{ steps.get_version.outputs.VERSION }}
+          dotnet pack ./SparklerNet/SparklerNet.csproj \
+            --configuration Release \
+            --no-build \
+            --output ./artifacts \
+            /p:Version=${{ steps.get_version.outputs.VERSION }}
+
+      - name: NuGet login (OIDC authorization)
+        uses: NuGet/login@v1
+        id: nuget_login
+        with:
+          user: ${{ secrets.NUGET_USERNAME }}
+
+      - name: Push SparklerNet to NuGet
+        run: |
+          dotnet nuget push ./artifacts/*.nupkg \
+            --api-key ${{ steps.nuget_login.outputs.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
