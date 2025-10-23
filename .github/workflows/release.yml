@@ -1,10 +1,10 @@
-﻿name: Publish to NuGet (Trusted)
+name: Publish to NuGet (Trusted)
 
 # Only trigger for Tags that comply with SemVer specifications (e.g., v1.0.0, v2.3.4-beta.1, v3.1.0+20240101)
 # Matching rule: v + number.number.number + optional pre-release info (starting with -) + optional build info (starting with +)
 on:
   push:
-    tags: [ 'v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+)?' ]
+    tags: [ 'v[0-9]+.[0-9]+.[0-9]+*' ]
 
 jobs:
   build-and-publish:
