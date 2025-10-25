@@ -7,7 +7,7 @@
         <Nullable>enable</Nullable>
         
         <!-- Version Information -->
-        <Version>0.9.1-dev</Version>
+        <Version>9.0.1</Version>
         
         <!-- NuGet Package Configuration -->
         <!-- Basic Info -->
