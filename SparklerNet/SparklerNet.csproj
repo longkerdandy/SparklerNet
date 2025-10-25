@@ -7,21 +7,23 @@
         <Nullable>enable</Nullable>
         
         <!-- Version Information -->
-        <Version>0.9.0</Version>
+        <Version>9.0.1</Version>
         
-        <!-- NuGet Package Basic Info -->
+        <!-- NuGet Package Configuration -->
+        <!-- Basic Info -->
         <PackageId>SparklerNet</PackageId>
         <Authors>Dennis Gu</Authors>
         <Description>An open-source Sparkplug Client Library for .NET 9.0 or later</Description>
-        <PackageTags>mqtt sparkplug iiot industrial-40</PackageTags>
+        <PackageTags>C# .Net MQTT Sparkplug IIoT Industry4.0</PackageTags>
+        
+        <!-- Documentation & Metadata -->
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
         
         <!-- Link Information -->
         <PackageProjectUrl>https://github.com/longkerdandy/SparklerNet</PackageProjectUrl>
         <RepositoryUrl>https://github.com/longkerdandy/SparklerNet</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
-        
-        <!-- License Information -->
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
         
         <!-- Build Configuration -->
         <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
@@ -30,6 +32,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <!-- Package References -->
         <PackageReference Include="Google.Protobuf" Version="3.33.0" />
         <PackageReference Include="JetBrains.Annotations" Version="2025.2.2" />
         <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10" />
@@ -39,7 +42,11 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- Folders and Files -->
         <Folder Include="Core\Protobuf\"/>
+        
+        <!-- Include the README file in the NuGet package -->
+        <None Include="..\README.md" Pack="true" PackagePath=""/>
     </ItemGroup>
 
 </Project>
