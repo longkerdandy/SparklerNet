@@ -7,14 +7,14 @@
         <Nullable>enable</Nullable>
         
         <!-- Version Information -->
-        <Version>9.0.1</Version>
+        <Version>9.0.2-dev</Version>
         
         <!-- NuGet Package Configuration -->
         <!-- Basic Info -->
         <PackageId>SparklerNet</PackageId>
         <Authors>Dennis Gu</Authors>
         <Description>An open-source Sparkplug Client Library for .NET 9.0 or later</Description>
-        <PackageTags>C# .Net MQTT Sparkplug IIoT Industry4.0</PackageTags>
+        <PackageTags>C# .NET MQTT Sparkplug IIoT Industry4.0</PackageTags>
         
         <!-- Documentation & Metadata -->
         <PackageReadmeFile>README.md</PackageReadmeFile>
