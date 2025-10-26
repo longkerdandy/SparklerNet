@@ -1,5 +1,4 @@
-﻿using JetBrains.Annotations;
-using ProtoDataSet = SparklerNet.Core.Protobuf.Payload.Types.DataSet;
+﻿using ProtoDataSet = SparklerNet.Core.Protobuf.Payload.Types.DataSet;
 using ProtoDataSetRow = SparklerNet.Core.Protobuf.Payload.Types.DataSet.Types.Row;
 using ProtoDataSetValue = SparklerNet.Core.Protobuf.Payload.Types.DataSet.Types.DataSetValue;
 
@@ -8,7 +7,6 @@ namespace SparklerNet.Core.Model.Conversion;
 /// <summary>
 ///     Converts between <see cref="DataSet" /> and <see cref="ProtoDataSet" />.
 /// </summary>
-[PublicAPI]
 public static class DataSetConverter
 {
     /// <summary>
@@ -63,13 +61,18 @@ public static class DataSetConverter
         // Convert the value based on the data type
         return dataType switch
         {
-            DataType.Int8 or DataType.Int16 or DataType.Int32 or DataType.UInt8 or DataType.UInt16 or DataType.UInt32 => 
+            DataType.Int8 or DataType.Int16 or DataType.Int32 or DataType.UInt8 or DataType.UInt16 or DataType.UInt32 =>
                 new ProtoDataSetValue { IntValue = Convert.ToUInt32(value) },
             DataType.Int64 or DataType.UInt64 => new ProtoDataSetValue { LongValue = Convert.ToUInt64(value) },
             DataType.Float => new ProtoDataSetValue { FloatValue = Convert.ToSingle(value) },
             DataType.Double => new ProtoDataSetValue { DoubleValue = Convert.ToDouble(value) },
             DataType.Boolean => new ProtoDataSetValue { BooleanValue = Convert.ToBoolean(value) },
-            DataType.DateTime => new ProtoDataSetValue { LongValue = Convert.ToUInt64(value) },
+            DataType.DateTime => new ProtoDataSetValue
+            {
+                LongValue = value is long
+                    ? Convert.ToUInt64(value)
+                    : throw new NotSupportedException("Value for DateTime type must be long")
+            },
             DataType.String or DataType.Text => new ProtoDataSetValue { StringValue = value.ToString()! },
             _ => throw new NotSupportedException($"Data type {dataType} is not supported in DataSet conversion.")
         };

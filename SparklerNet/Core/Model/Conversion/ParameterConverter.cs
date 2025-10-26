@@ -1,4 +1,3 @@
-using JetBrains.Annotations;
 using ProtoParameter = SparklerNet.Core.Protobuf.Payload.Types.Template.Types.Parameter;
 
 namespace SparklerNet.Core.Model.Conversion;
@@ -6,7 +5,6 @@ namespace SparklerNet.Core.Model.Conversion;
 /// <summary>
 ///     Converts between <see cref="Parameter" /> and <see cref="ProtoParameter" />.
 /// </summary>
-[PublicAPI]
 public static class ParameterConverter
 {
     /// <summary>
@@ -27,30 +25,27 @@ public static class ParameterConverter
         };
 
         // Only set the value if it's not null
-        if (parameter.Value != null)
-        {
-            // Use switch expression with separate cases for each enum value
-            Action convertValue = parameter.Type switch
-            {
-                DataType.Int8 => () => protoParameter.IntValue = Convert.ToUInt32(parameter.Value),
-                DataType.Int16 => () => protoParameter.IntValue = Convert.ToUInt32(parameter.Value),
-                DataType.Int32 => () => protoParameter.IntValue = Convert.ToUInt32(parameter.Value),
-                DataType.UInt8 => () => protoParameter.IntValue = Convert.ToUInt32(parameter.Value),
-                DataType.UInt16 => () => protoParameter.IntValue = Convert.ToUInt32(parameter.Value),
-                DataType.UInt32 => () => protoParameter.IntValue = Convert.ToUInt32(parameter.Value),
-                DataType.Int64 => () => protoParameter.LongValue = Convert.ToUInt64(parameter.Value),
-                DataType.UInt64 => () => protoParameter.LongValue = Convert.ToUInt64(parameter.Value),
-                DataType.Float => () => protoParameter.FloatValue = Convert.ToSingle(parameter.Value),
-                DataType.Double => () => protoParameter.DoubleValue = Convert.ToDouble(parameter.Value),
-                DataType.Boolean => () => protoParameter.BooleanValue = Convert.ToBoolean(parameter.Value),
-                DataType.DateTime => () => protoParameter.LongValue = Convert.ToUInt64(parameter.Value),
-                DataType.String or DataType.Text => () => protoParameter.StringValue = parameter.Value.ToString()!,
-                _ => throw new NotSupportedException($"Data type {parameter.Type} is not supported in Parameter.")
-            };
+        if (parameter.Value == null) return protoParameter;
 
-            // Execute the conversion action
-            convertValue();
-        }
+        // Use switch expression with separate cases for each enum value
+        Action convertValue = parameter.Type switch
+        {
+            DataType.Int8 or DataType.Int16 or DataType.Int32 or DataType.UInt8 or DataType.UInt16 or DataType.UInt32 =>
+                () => protoParameter.IntValue = Convert.ToUInt32(parameter.Value),
+            DataType.Int64 or DataType.UInt64 => () => protoParameter.LongValue = Convert.ToUInt64(parameter.Value),
+            DataType.Float => () => protoParameter.FloatValue = Convert.ToSingle(parameter.Value),
+            DataType.Double => () => protoParameter.DoubleValue = Convert.ToDouble(parameter.Value),
+            DataType.Boolean => () => protoParameter.BooleanValue = Convert.ToBoolean(parameter.Value),
+            DataType.DateTime => () => protoParameter.LongValue = parameter.Value is long value
+                ? Convert.ToUInt64(value)
+                : throw new NotSupportedException("Value for DateTime type must be long"),
+            DataType.String or DataType.Text => () => protoParameter.StringValue = parameter.Value.ToString()!,
+            _ => throw new NotSupportedException(
+                $"Data type {parameter.Type} is not supported in Parameter conversion.")
+        };
+
+        // Execute the conversion action
+        convertValue();
 
         return protoParameter;
     }

@@ -1,5 +1,4 @@
-﻿using JetBrains.Annotations;
-
+﻿// ReSharper disable PropertyCanBeMadeInitOnly.Global
 namespace SparklerNet.Core.Model;
 
 /// <summary>
@@ -7,7 +6,6 @@ namespace SparklerNet.Core.Model;
 ///     basic information such as a timestamp and a sequence number as well as an array of metrics which contain key/value
 ///     pairs of data.
 /// </summary>
-[PublicAPI]
 public record Payload
 {
     /// <summary>

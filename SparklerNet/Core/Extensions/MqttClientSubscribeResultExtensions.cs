@@ -8,7 +8,7 @@ namespace SparklerNet.Core.Extensions;
 public static class MqttClientSubscribeResultExtensions
 {
     /// <summary>
-    ///     Formats the MqttClientSubscribeResult into a string with format "Topic [ResultCode]".
+    ///     Formats the MqttClientSubscribeResult into a string with the format "Topic [ResultCode]".
     /// </summary>
     /// <param name="result">The subscribe result</param>
     /// <returns>Formatted string representing all subscription results</returns>

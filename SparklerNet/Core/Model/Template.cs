@@ -1,13 +1,10 @@
-﻿using JetBrains.Annotations;
-
-namespace SparklerNet.Core.Model;
+﻿namespace SparklerNet.Core.Model;
 
 /// <summary>
 ///     A Sparkplug Template is used for encoding complex datatypes in a payload. It is a type of metric and can be used to
 ///     create custom datatype definitions and instances. These are also sometimes referred to as User Defined Types or
 ///     UDTs. There are two types of Templates: Template Definition and Template Instance.
 /// </summary>
-[PublicAPI]
 public record Template
 {
     /// <summary>

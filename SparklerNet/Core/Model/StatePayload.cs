@@ -1,12 +1,10 @@
 ﻿using System.Text.Json.Serialization;
-using JetBrains.Annotations;
 
 namespace SparklerNet.Core.Model;
 
 /// <summary>
 ///     The Sparkplug STATE message payload.
 /// </summary>
-[PublicAPI]
 public sealed record StatePayload
 {
     //  Is online?

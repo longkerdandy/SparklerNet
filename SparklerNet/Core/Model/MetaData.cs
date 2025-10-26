@@ -1,11 +1,8 @@
-﻿using JetBrains.Annotations;
-
-namespace SparklerNet.Core.Model;
+﻿namespace SparklerNet.Core.Model;
 
 /// <summary>
 ///     A Sparkplug MetaData object is used to describe different types of binary data.
 /// </summary>
-[PublicAPI]
 public record MetaData
 {
     /// <summary>

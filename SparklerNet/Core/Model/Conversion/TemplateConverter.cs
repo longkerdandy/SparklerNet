@@ -1,12 +1,10 @@
-﻿using JetBrains.Annotations;
-using ProtoTemplate = SparklerNet.Core.Protobuf.Payload.Types.Template;
+﻿using ProtoTemplate = SparklerNet.Core.Protobuf.Payload.Types.Template;
 
 namespace SparklerNet.Core.Model.Conversion;
 
 /// <summary>
 ///     Converts between <see cref="Template" /> and <see cref="ProtoTemplate" />.
 /// </summary>
-[PublicAPI]
 public static class TemplateConverter
 {
     /// <summary>
@@ -32,6 +30,7 @@ public static class TemplateConverter
         foreach (var metric in template.Metrics) protoTemplate.Metrics.Add(metric.ToProtoMetric());
 
         // Convert parameters using ParameterConverter
+        // ReSharper disable once InvertIf
         if (template.Parameters != null)
             foreach (var parameter in template.Parameters)
                 protoTemplate.Parameters.Add(parameter.ToProtoParameter());

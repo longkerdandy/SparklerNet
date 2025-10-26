@@ -1,7 +1,6 @@
 using SparklerNet.Core.Model;
 using SparklerNet.Core.Model.Conversion;
 using Xunit;
-using Payload = SparklerNet.Core.Protobuf.Payload;
 using ProtoParameter = SparklerNet.Core.Protobuf.Payload.Types.Template.Types.Parameter;
 
 namespace SparklerNet.Tests.Core.Model.Conversion;

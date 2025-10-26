@@ -1,5 +1,4 @@
-﻿using JetBrains.Annotations;
-using ProtoPropertyValue = SparklerNet.Core.Protobuf.Payload.Types.PropertyValue;
+﻿using ProtoPropertyValue = SparklerNet.Core.Protobuf.Payload.Types.PropertyValue;
 using ProtoPropertySet = SparklerNet.Core.Protobuf.Payload.Types.PropertySet;
 using ProtoPropertySetList = SparklerNet.Core.Protobuf.Payload.Types.PropertySetList;
 
@@ -8,7 +7,6 @@ namespace SparklerNet.Core.Model.Conversion;
 /// <summary>
 ///     Converts between <see cref="PropertyValue" /> and <see cref="ProtoPropertyValue" />.
 /// </summary>
-[PublicAPI]
 public static class PropertyConverter
 {
     /// <summary>
@@ -28,34 +26,30 @@ public static class PropertyConverter
             IsNull = property.IsNull
         };
 
-        if (!property.IsNull)
-        {
-            // Use switch expression with separate cases for each enum value
-            Action convertValue = property.Type switch
-            {
-                DataType.Int8 => () => protoProperty.IntValue = Convert.ToUInt32(property.Value),
-                DataType.Int16 => () => protoProperty.IntValue = Convert.ToUInt32(property.Value),
-                DataType.Int32 => () => protoProperty.IntValue = Convert.ToUInt32(property.Value),
-                DataType.UInt8 => () => protoProperty.IntValue = Convert.ToUInt32(property.Value),
-                DataType.UInt16 => () => protoProperty.IntValue = Convert.ToUInt32(property.Value),
-                DataType.UInt32 => () => protoProperty.IntValue = Convert.ToUInt32(property.Value),
-                DataType.Int64 => () => protoProperty.LongValue = Convert.ToUInt64(property.Value),
-                DataType.UInt64 => () => protoProperty.LongValue = Convert.ToUInt64(property.Value),
-                DataType.Float => () => protoProperty.FloatValue = Convert.ToSingle(property.Value),
-                DataType.Double => () => protoProperty.DoubleValue = Convert.ToDouble(property.Value),
-                DataType.Boolean => () => protoProperty.BooleanValue = Convert.ToBoolean(property.Value),
-                DataType.DateTime => () => protoProperty.LongValue = Convert.ToUInt64(property.Value),
-                DataType.String or DataType.Text => () => protoProperty.StringValue = property.Value!.ToString()!,
-                DataType.PropertySet when property.Value is PropertySet propertySet =>
-                    () => protoProperty.PropertysetValue = propertySet.ToProtoPropertySet(),
-                DataType.PropertySetList when property.Value is PropertySetList propertySetList =>
-                    () => protoProperty.PropertysetsValue = propertySetList.ToProtoPropertySetList(),
-                _ => throw new NotSupportedException($"Data type {property.Type} is not supported in Property.")
-            };
+        if (property.IsNull) return protoProperty;
+        // Use switch expression with separate cases for each enum value
 
-            // Execute the conversion action
-            convertValue();
-        }
+        Action convertValue = property.Type switch
+        {
+            DataType.Int8 or DataType.Int16 or DataType.Int32 or DataType.UInt8 or DataType.UInt16 or DataType.UInt32 =>
+                () => protoProperty.IntValue = Convert.ToUInt32(property.Value),
+            DataType.Int64 or DataType.UInt64 => () => protoProperty.LongValue = Convert.ToUInt64(property.Value),
+            DataType.Float => () => protoProperty.FloatValue = Convert.ToSingle(property.Value),
+            DataType.Double => () => protoProperty.DoubleValue = Convert.ToDouble(property.Value),
+            DataType.Boolean => () => protoProperty.BooleanValue = Convert.ToBoolean(property.Value),
+            DataType.DateTime => () => protoProperty.LongValue = property.Value is long value
+                ? Convert.ToUInt64(value)
+                : throw new NotSupportedException("Value for DateTime type must be long"),
+            DataType.String or DataType.Text => () => protoProperty.StringValue = property.Value!.ToString()!,
+            DataType.PropertySet when property.Value is PropertySet propertySet =>
+                () => protoProperty.PropertysetValue = propertySet.ToProtoPropertySet(),
+            DataType.PropertySetList when property.Value is PropertySetList propertySetList =>
+                () => protoProperty.PropertysetsValue = propertySetList.ToProtoPropertySetList(),
+            _ => throw new NotSupportedException($"Data type {property.Type} is not supported in Property conversion.")
+        };
+
+        // Execute the conversion action
+        convertValue();
 
         return protoProperty;
     }
@@ -180,6 +174,7 @@ public static class PropertyConverter
     /// <param name="protoPropertySetList">The Protobuf property set list to convert.</param>
     /// <returns>The converted property set list.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="protoPropertySetList" /> is null.</exception>
+    // ReSharper disable once MemberCanBePrivate.Global
     public static PropertySetList ToPropertySetList(this ProtoPropertySetList protoPropertySetList)
     {
         ArgumentNullException.ThrowIfNull(protoPropertySetList);

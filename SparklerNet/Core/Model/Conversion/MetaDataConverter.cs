@@ -1,12 +1,10 @@
-﻿using JetBrains.Annotations;
-using ProtoMetaData = SparklerNet.Core.Protobuf.Payload.Types.MetaData;
+﻿using ProtoMetaData = SparklerNet.Core.Protobuf.Payload.Types.MetaData;
 
 namespace SparklerNet.Core.Model.Conversion;
 
 /// <summary>
 ///     Converts between <see cref="MetaData" /> and <see cref="ProtoMetaData" />.
 /// </summary>
-[PublicAPI]
 public static class MetaDataConverter
 {
     /// <summary>

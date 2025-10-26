@@ -1,11 +1,9 @@
-﻿using JetBrains.Annotations;
-
+﻿// ReSharper disable PropertyCanBeMadeInitOnly.Global
 namespace SparklerNet.Core.Model;
 
 /// <summary>
 ///     A Sparkplug DataSet object is used to encode matrices of data.
 /// </summary>
-[PublicAPI]
 public record DataSet
 {
     /// <summary>

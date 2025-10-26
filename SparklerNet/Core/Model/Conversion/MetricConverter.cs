@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using JetBrains.Annotations;
 using static Google.Protobuf.ByteString;
 using ProtoMetric = SparklerNet.Core.Protobuf.Payload.Types.Metric;
 
@@ -8,7 +7,6 @@ namespace SparklerNet.Core.Model.Conversion;
 /// <summary>
 ///     Converts between <see cref="Metric" /> and <see cref="ProtoMetric" />.
 /// </summary>
-[PublicAPI]
 public static class MetricConverter
 {
     /// <summary>
@@ -164,7 +162,7 @@ public static class MetricConverter
 
         var elementType = typeof(T);
 
-        // Handle different array types based on element type
+        // Handle different array types based on element types
         if (elementType == typeof(sbyte)) // Int8Array
             return Array.ConvertAll((sbyte[])Convert.ChangeType(array, typeof(sbyte[])), b => (byte)b);
 
@@ -233,7 +231,7 @@ public static class MetricConverter
             var countBytes = BitConverter.GetBytes(array.Length);
             if (!BitConverter.IsLittleEndian) Array.Reverse(countBytes);
 
-            // Calculate required byte count for bit-packing (rounded up to full byte)
+            // Calculate the required byte count for bit-packing (rounded up to full byte)
             var byteCount = (array.Length + 7) / 8;
             var boolBytes = new byte[byteCount];
 
@@ -292,7 +290,7 @@ public static class MetricConverter
         if (bytes.Length == 0)
             return [];
 
-        // Handle different array types based on element type
+        // Handle different array types based on element types
         if (elementType == typeof(sbyte)) // Int8Array
             return (T[])(object)Array.ConvertAll(bytes, b => (sbyte)b);
 
@@ -365,7 +363,7 @@ public static class MetricConverter
             var count = BitConverter.ToInt32(countBytes, 0);
             var result = new bool[count];
 
-            // If there are no booleans, return empty array
+            // If there are no booleans, return an empty array
             if (count == 0)
                 return (T[])(object)result;
 

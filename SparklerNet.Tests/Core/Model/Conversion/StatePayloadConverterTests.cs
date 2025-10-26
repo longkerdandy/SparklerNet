@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.Text;
 using System.Text.Json;
 using SparklerNet.Core.Model;
 using SparklerNet.Core.Model.Conversion;
@@ -64,7 +63,7 @@ public class StatePayloadConverterTests
     [Fact]
     public void DeserializeStatePayload_PartialJson_ThrowsException()
     {
-        var partialJsonBytes = Encoding.UTF8.GetBytes(@"{ ""online"":true,");
+        var partialJsonBytes = """{ "online":true,"""u8.ToArray();
         var sequence = new ReadOnlySequence<byte>(partialJsonBytes);
         Assert.Throws<JsonException>(() => StatePayloadConverter.DeserializeStatePayload(sequence));
     }
@@ -72,11 +71,11 @@ public class StatePayloadConverterTests
     [Fact]
     public void DeserializeStatePayload_NullJsonString_ThrowsArgumentNullException()
     {
-        // When JSON string is exactly "null", JsonSerializer.Deserialize returns null
-        var nullJsonBytes = Encoding.UTF8.GetBytes("null");
+        // When a JSON string is exactly "null", JsonSerializer.Deserialize returns null
+        var nullJsonBytes = "null"u8.ToArray();
         var sequence = new ReadOnlySequence<byte>(nullJsonBytes);
 
-        // Verify DeserializeStatePayload method throws ArgumentNullException when result is null
+        // Verify DeserializeStatePayload method throws ArgumentNullException when the result is null
         Assert.Throws<ArgumentNullException>(() => StatePayloadConverter.DeserializeStatePayload(sequence));
     }
 }

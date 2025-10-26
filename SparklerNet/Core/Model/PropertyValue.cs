@@ -1,12 +1,9 @@
-﻿using JetBrains.Annotations;
-
+﻿// ReSharper disable PropertyCanBeMadeInitOnly.Global
 namespace SparklerNet.Core.Model;
 
 /// <summary>
-///     A Sparkplug PropertyValue object is used to encode the value and datatype of the value of a property in a
-///     PropertySet.
+///     A Sparkplug PropertyValue object is used to encode the value and datatype of a property in a PropertySet.
 /// </summary>
-[PublicAPI]
 public record PropertyValue
 {
     /// <summary>
