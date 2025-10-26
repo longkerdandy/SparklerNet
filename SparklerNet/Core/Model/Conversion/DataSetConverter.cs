@@ -52,7 +52,7 @@ public static class DataSetConverter
     }
 
     /// <summary>
-    ///     Converts a .NET object to a Protobuf DataSetValue based on the specified data type.
+    ///     Converts an .NET object to a Protobuf DataSetValue based on the specified data type.
     /// </summary>
     /// <param name="value">The value to convert.</param>
     /// <param name="dataType">The data type of the value.</param>
@@ -60,17 +60,12 @@ public static class DataSetConverter
     /// <exception cref="NotSupportedException">Thrown when the data type is not supported in DataSet conversion.</exception>
     private static ProtoDataSetValue ConvertToProtoDataSetValue(object value, DataType dataType)
     {
-        // Convert the value based on the data type using switch expression
+        // Convert the value based on the data type
         return dataType switch
         {
-            DataType.Int8 => new ProtoDataSetValue { IntValue = Convert.ToUInt32(value) },
-            DataType.Int16 => new ProtoDataSetValue { IntValue = Convert.ToUInt32(value) },
-            DataType.Int32 => new ProtoDataSetValue { IntValue = Convert.ToUInt32(value) },
-            DataType.UInt8 => new ProtoDataSetValue { IntValue = Convert.ToUInt32(value) },
-            DataType.UInt16 => new ProtoDataSetValue { IntValue = Convert.ToUInt32(value) },
-            DataType.UInt32 => new ProtoDataSetValue { IntValue = Convert.ToUInt32(value) },
-            DataType.Int64 => new ProtoDataSetValue { LongValue = Convert.ToUInt64(value) },
-            DataType.UInt64 => new ProtoDataSetValue { LongValue = Convert.ToUInt64(value) },
+            DataType.Int8 or DataType.Int16 or DataType.Int32 or DataType.UInt8 or DataType.UInt16 or DataType.UInt32 => 
+                new ProtoDataSetValue { IntValue = Convert.ToUInt32(value) },
+            DataType.Int64 or DataType.UInt64 => new ProtoDataSetValue { LongValue = Convert.ToUInt64(value) },
             DataType.Float => new ProtoDataSetValue { FloatValue = Convert.ToSingle(value) },
             DataType.Double => new ProtoDataSetValue { DoubleValue = Convert.ToDouble(value) },
             DataType.Boolean => new ProtoDataSetValue { BooleanValue = Convert.ToBoolean(value) },
@@ -95,7 +90,7 @@ public static class DataSetConverter
         {
             Columns = protoDataSet.Columns.ToList(),
             Types = protoDataSet.Types_.Select(type => (DataType)type).ToList(),
-            ColumnData = new Dictionary<string, List<object>>()
+            ColumnData = []
         };
 
         // Initialize ColumnData dictionary
