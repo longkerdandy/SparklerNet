@@ -1,13 +1,13 @@
-﻿using JetBrains.Annotations;
-using MQTTnet.Packets;
+﻿using MQTTnet.Packets;
 using SparklerNet.Core.Constants;
+// ReSharper disable PropertyCanBeMadeInitOnly.Global
+// ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
 
 namespace SparklerNet.Core.Options;
 
 /// <summary>
 ///     The Sparkplug client options.
 /// </summary>
-[PublicAPI]
 public record SparkplugClientOptions
 {
     /// <summary>
@@ -16,7 +16,7 @@ public record SparkplugClientOptions
     public SparkplugVersion Version { get; set; } = SparkplugVersion.V300;
 
     /// <summary>
-    ///     The Sparkplug Host Application Id.
+    ///     The Sparkplug Host Application ID.
     ///     Only applies to Host Applications and Primary Host Applications.
     ///     MUST be unique to all other Sparkplug Host IDs in the infrastructure.
     ///     MUST be a valid UTF-8 string except the reserved characters of + (plus), / (forward slash), and # (number sign).
