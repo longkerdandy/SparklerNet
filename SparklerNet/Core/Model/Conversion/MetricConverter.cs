@@ -52,7 +52,7 @@ public static class MetricConverter
                 ? Convert.ToUInt64(value)
                 : throw new NotSupportedException("Value for DateTime type must be long"),
             DataType.String or DataType.Text or DataType.UUID =>
-                () => protoMetric.StringValue = metric.Value!.ToString(),
+                () => protoMetric.StringValue = metric.Value!.ToString()!,
             DataType.Bytes or DataType.File => () => protoMetric.BytesValue = metric.Value is byte[] bytes
                 ? CopyFrom(bytes)
                 : throw new NotSupportedException("Value for Bytes/File type must be byte[]"),
@@ -127,8 +127,8 @@ public static class MetricConverter
                 DataType.DateTime => (long)protoMetric.LongValue,
                 DataType.String or DataType.Text or DataType.UUID => protoMetric.StringValue,
                 DataType.Bytes or DataType.File => protoMetric.BytesValue!.ToByteArray(),
-                DataType.DataSet => protoMetric.DatasetValue!.ToDataSet(),
-                DataType.Template => protoMetric.TemplateValue!.ToTemplate(),
+                DataType.DataSet => protoMetric.DatasetValue?.ToDataSet(),
+                DataType.Template => protoMetric.TemplateValue?.ToTemplate(),
                 DataType.Int8Array => DeserializeArray<sbyte>(protoMetric.BytesValue!.ToByteArray()),
                 DataType.UInt8Array => DeserializeArray<byte>(protoMetric.BytesValue!.ToByteArray()),
                 DataType.Int16Array => DeserializeArray<short>(protoMetric.BytesValue!.ToByteArray()),

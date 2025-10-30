@@ -62,7 +62,7 @@ public partial class SparkplugHostApplication
     // MQTT Client
     public IMqttClient MqttClient { get; }
 
-    [GeneratedRegex(@"[+/\\#]")]
+    [GeneratedRegex(@"[+/#]", RegexOptions.Compiled)]
     private static partial Regex HostApplicationIdRegex();
 
     public event Func<EdgeNodeMessageEventArgs, Task> EdgeNodeBirthReceivedAsync
