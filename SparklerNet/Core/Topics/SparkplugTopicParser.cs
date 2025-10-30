@@ -6,17 +6,8 @@ namespace SparklerNet.Core.Topics;
 /// <summary>
 ///     Provides methods for parsing Sparkplug Topic strings (supports both regular messages and STATE messages).
 /// </summary>
-public static class SparkplugTopicParser
+public static partial class SparkplugTopicParser
 {
-    // Regular expression pattern: matches both regular message and STATE message formats
-    // Pattern 1 (Regular messages): <namespace>/<group_id>/<message_type>/<edge_node_id>/[device_id]
-    // Pattern 2 (STATE messages): <namespace>/STATE/<host_id>
-    private static readonly Regex TopicRegex = new(
-        @"^(?<namespace>[^/]+)/(?<groupId>[^/]+)/(?<messageType>[^/]+)/(?<edgeNodeId>[^/]+)(/(?<deviceId>[^/]+))?$" +
-        @"|^(?<namespace>[^/]+)/(STATE)/(?<hostId>[^/]+)$",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase
-    );
-
     /// <summary>
     ///     Parses a Sparkplug Topic string (supports both regular messages and STATE messages).
     /// </summary>
@@ -32,7 +23,7 @@ public static class SparkplugTopicParser
     {
         ArgumentNullException.ThrowIfNull(topic);
 
-        var match = TopicRegex.Match(topic);
+        var match = TopicRegex().Match(topic);
         if (!match.Success) throw new NotSupportedException($"Not supported Sparkplug topic format: {topic}");
 
         // Extract the namespace using the named group which works for both patterns
@@ -69,4 +60,12 @@ public static class SparkplugTopicParser
             null // Regular messages have no host_id
         );
     }
+
+    // Regular expression pattern: matches both regular message and STATE message formats
+    // Pattern 1 (Regular messages): <namespace>/<group_id>/<message_type>/<edge_node_id>/[device_id]
+    // Pattern 2 (STATE messages): <namespace>/STATE/<host_id>
+    [GeneratedRegex(
+        "^(?<namespace>[^/]+)/(?<groupId>[^/]+)/(?<messageType>[^/]+)/(?<edgeNodeId>[^/]+)(/(?<deviceId>[^/]+))?$|^(?<namespace>[^/]+)/(STATE)/(?<hostId>[^/]+)$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled, "zh-CN")]
+    private static partial Regex TopicRegex();
 }

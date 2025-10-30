@@ -2,6 +2,9 @@
 using SparklerNet.Core.Constants;
 using SparklerNet.Core.Model;
 
+// ReSharper disable UnusedMember.Global
+// ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
+
 namespace SparklerNet.Core.Events;
 
 /// <summary>

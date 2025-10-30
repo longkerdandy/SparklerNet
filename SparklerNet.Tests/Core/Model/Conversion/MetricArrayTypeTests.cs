@@ -12,7 +12,7 @@ public class MetricArrayTypeTests
     {
         sbyte[] input = [-23, 123];
         var result = MetricConverter.SerializeArray(input);
-        
+
         Assert.Equal(input.Length, result.Length);
         var expected = Array.ConvertAll(input, b => (byte)b);
         Assert.Equal(expected, result);
@@ -23,7 +23,7 @@ public class MetricArrayTypeTests
     {
         byte[] input = [23, 250];
         byte[] expected = [0x17, 0xFA];
-        
+
         var result = MetricConverter.SerializeArray(input);
         Assert.Equal(expected, result);
     }
@@ -34,7 +34,7 @@ public class MetricArrayTypeTests
         short[] input = [-30000, 30000];
         // ReSharper disable once UseUtf8StringLiteral
         byte[] expected = [0xD0, 0x8A, 0x30, 0x75];
-        
+
         var result = MetricConverter.SerializeArray(input);
         Assert.Equal(expected, result);
     }
@@ -44,7 +44,7 @@ public class MetricArrayTypeTests
     {
         ushort[] input = [30, 52360];
         byte[] expected = [0x1E, 0x00, 0x88, 0xCC];
-        
+
         var result = MetricConverter.SerializeArray(input);
         Assert.Equal(expected, result);
     }
@@ -54,7 +54,7 @@ public class MetricArrayTypeTests
     {
         int[] input = [-1, 315338746];
         byte[] expected = [0xFF, 0xFF, 0xFF, 0xFF, 0xFA, 0xAF, 0xCB, 0x12];
-        
+
         var result = MetricConverter.SerializeArray(input);
         Assert.Equal(expected, result);
     }
@@ -64,7 +64,7 @@ public class MetricArrayTypeTests
     {
         uint[] input = [52, 3293969225];
         byte[] expected = [0x34, 0x00, 0x00, 0x00, 0x49, 0xFB, 0x55, 0xC4];
-        
+
         var result = MetricConverter.SerializeArray(input);
         Assert.Equal(expected, result);
     }
@@ -73,8 +73,9 @@ public class MetricArrayTypeTests
     public void SerializeArray_Int64Array_ReturnsCorrectBytes()
     {
         long[] input = [-4270929666821191986, -3601064768563266876];
-        byte[] expected = [0xCE, 0x06, 0x72, 0xAC, 0x18, 0x9C, 0xBA, 0xC4, 0xC4, 0xBA, 0x9C, 0x18, 0xAC, 0x72, 0x06, 0xCE];
-        
+        byte[] expected =
+            [0xCE, 0x06, 0x72, 0xAC, 0x18, 0x9C, 0xBA, 0xC4, 0xC4, 0xBA, 0x9C, 0x18, 0xAC, 0x72, 0x06, 0xCE];
+
         var result = MetricConverter.SerializeArray(input);
         Assert.Equal(expected, result);
     }
@@ -83,8 +84,9 @@ public class MetricArrayTypeTests
     public void SerializeArray_UInt64Array_ReturnsCorrectBytes()
     {
         ulong[] input = [52, 16444743074749521625];
-        byte[] expected = [0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xD9, 0x9E, 0x02, 0xD1, 0xB2, 0x76, 0x37, 0xE4];
-        
+        byte[] expected =
+            [0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xD9, 0x9E, 0x02, 0xD1, 0xB2, 0x76, 0x37, 0xE4];
+
         var result = MetricConverter.SerializeArray(input);
         Assert.Equal(expected, result);
     }
@@ -94,11 +96,11 @@ public class MetricArrayTypeTests
     {
         float[] input = [1.23f, 89.341f];
         var result = MetricConverter.SerializeArray(input);
-        
+
         Assert.Equal(input.Length * 4, result.Length);
         var deserialized = new float[input.Length];
         Buffer.BlockCopy(result, 0, deserialized, 0, result.Length);
-        
+
         for (var i = 0; i < input.Length; i++)
             Assert.Equal(input[i], deserialized[i], 5);
     }
@@ -108,11 +110,11 @@ public class MetricArrayTypeTests
     {
         double[] input = [12.354213, 1022.9123213];
         var result = MetricConverter.SerializeArray(input);
-        
+
         Assert.Equal(input.Length * 8, result.Length);
         var deserialized = new double[input.Length];
         Buffer.BlockCopy(result, 0, deserialized, 0, result.Length);
-        
+
         for (var i = 0; i < input.Length; i++)
             Assert.Equal(input[i], deserialized[i], 9);
     }
@@ -122,11 +124,11 @@ public class MetricArrayTypeTests
     {
         bool[] input = [false, false, true, true, false, true, false, false, true, true, false, true];
         var result = MetricConverter.SerializeArray(input);
-        
+
         var countBytes = BitConverter.GetBytes(input.Length);
         for (var i = 0; i < 4; i++)
             Assert.Equal(countBytes[i], result[i]);
-        
+
         var expectedByteCount = 4 + (input.Length + 7) / 8;
         Assert.Equal(expectedByteCount, result.Length);
     }
@@ -136,7 +138,7 @@ public class MetricArrayTypeTests
     {
         string[] input = ["ABC", "hello"];
         var expected = "ABC\0hello\0"u8.ToArray();
-        
+
         var result = MetricConverter.SerializeArray(input);
         Assert.Equal(expected, result);
     }
@@ -146,7 +148,7 @@ public class MetricArrayTypeTests
     {
         long[] input = [1256102875335, 1656107875000];
         var result = MetricConverter.SerializeArray(input);
-        
+
         Assert.Equal(input.Length * 8, result.Length);
         for (var i = 0; i < input.Length; i++)
         {
@@ -173,7 +175,7 @@ public class MetricArrayTypeTests
     {
         string?[] input = ["test", null, "null"];
         var result = MetricConverter.SerializeArray(input);
-        
+
         byte[] expected;
         using (var stream = new MemoryStream())
         using (var writer = new BinaryWriter(stream))
@@ -185,7 +187,7 @@ public class MetricArrayTypeTests
             writer.Write((byte)0);
             expected = stream.ToArray();
         }
-        
+
         Assert.Equal(expected, result);
     }
 
@@ -194,7 +196,7 @@ public class MetricArrayTypeTests
     {
         Assert.Empty(MetricConverter.SerializeArray<int>([]));
         Assert.Empty(MetricConverter.SerializeArray<string>([]));
-        
+
         var boolResult = MetricConverter.SerializeArray<bool>([]);
         Assert.Equal(4, boolResult.Length);
         // ReSharper disable once UseUtf8StringLiteral
@@ -208,7 +210,7 @@ public class MetricArrayTypeTests
         sbyte[] original = [-23, 123];
         var input = MetricConverter.SerializeArray(original);
         var result = MetricConverter.DeserializeArray<sbyte>(input);
-        
+
         Assert.Equal(2, result.Length);
         Assert.Equal(original, result);
     }
@@ -218,8 +220,8 @@ public class MetricArrayTypeTests
     {
         byte[] input = [0x17, 0xFA]; // [23, 250] in hex
         var result = MetricConverter.DeserializeArray<byte>(input);
-        
-        Assert.Equal(new byte[] {23, 250}, result);
+
+        Assert.Equal(new byte[] { 23, 250 }, result);
     }
 
     [Fact]
@@ -228,8 +230,8 @@ public class MetricArrayTypeTests
         // ReSharper disable once UseUtf8StringLiteral
         byte[] input = [0xD0, 0x8A, 0x30, 0x75]; // [-30000, 30000] in hex
         var result = MetricConverter.DeserializeArray<short>(input);
-        
-        Assert.Equal(new short[] {-30000, 30000}, result);
+
+        Assert.Equal(new short[] { -30000, 30000 }, result);
     }
 
     [Fact]
@@ -237,8 +239,8 @@ public class MetricArrayTypeTests
     {
         byte[] input = [0x1E, 0x00, 0x88, 0xCC]; // [30, 52360] in hex
         var result = MetricConverter.DeserializeArray<ushort>(input);
-        
-        Assert.Equal(new ushort[] {30, 52360}, result);
+
+        Assert.Equal(new ushort[] { 30, 52360 }, result);
     }
 
     [Fact]
@@ -246,8 +248,8 @@ public class MetricArrayTypeTests
     {
         byte[] input = [0xFF, 0xFF, 0xFF, 0xFF, 0xFA, 0xAF, 0xCB, 0x12]; // [-1, 315338746] in hex
         var result = MetricConverter.DeserializeArray<int>(input);
-        
-        Assert.Equal(new[] {-1, 315338746}, result);
+
+        Assert.Equal(new[] { -1, 315338746 }, result);
     }
 
     [Fact]
@@ -255,8 +257,8 @@ public class MetricArrayTypeTests
     {
         byte[] input = [0x34, 0x00, 0x00, 0x00, 0x49, 0xFB, 0x55, 0xC4]; // [52, 3293969225] in hex
         var result = MetricConverter.DeserializeArray<uint>(input);
-        
-        Assert.Equal(new[] {52U, 3293969225U}, result);
+
+        Assert.Equal(new[] { 52U, 3293969225U }, result);
     }
 
     [Fact]
@@ -264,8 +266,8 @@ public class MetricArrayTypeTests
     {
         byte[] input = [0xCE, 0x06, 0x72, 0xAC, 0x18, 0x9C, 0xBA, 0xC4, 0xC4, 0xBA, 0x9C, 0x18, 0xAC, 0x72, 0x06, 0xCE];
         var result = MetricConverter.DeserializeArray<long>(input);
-        
-        Assert.Equal(new[] {-4270929666821191986L, -3601064768563266876L}, result);
+
+        Assert.Equal(new[] { -4270929666821191986L, -3601064768563266876L }, result);
     }
 
     [Fact]
@@ -273,8 +275,8 @@ public class MetricArrayTypeTests
     {
         byte[] input = [0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xD9, 0x9E, 0x02, 0xD1, 0xB2, 0x76, 0x37, 0xE4];
         var result = MetricConverter.DeserializeArray<ulong>(input);
-        
-        Assert.Equal(new[] {52UL, 16444743074749521625UL}, result);
+
+        Assert.Equal(new[] { 52UL, 16444743074749521625UL }, result);
     }
 
     [Fact]
@@ -284,7 +286,7 @@ public class MetricArrayTypeTests
         float[] original = [1.23f, 89.341f];
         var input = MetricConverter.SerializeArray(original);
         var result = MetricConverter.DeserializeArray<float>(input);
-        
+
         Assert.Equal(2, result.Length);
         Assert.Equal(original[0], result[0], 5);
         Assert.Equal(original[1], result[1], 5);
@@ -297,7 +299,7 @@ public class MetricArrayTypeTests
         double[] original = [12.354213, 1022.9123213];
         var input = MetricConverter.SerializeArray(original);
         var result = MetricConverter.DeserializeArray<double>(input);
-        
+
         Assert.Equal(2, result.Length);
         Assert.Equal(original[0], result[0], 9);
         Assert.Equal(original[1], result[1], 9);
@@ -310,7 +312,7 @@ public class MetricArrayTypeTests
         bool[] original = [false, false, true, true, false, true, false, false, true, true, false, true];
         var input = MetricConverter.SerializeArray(original);
         var result = MetricConverter.DeserializeArray<bool>(input);
-        
+
         Assert.Equal(12, result.Length);
         Assert.Equal(original, result);
     }
@@ -319,10 +321,11 @@ public class MetricArrayTypeTests
     public void DeserializeArray_StringArray_ReturnsCorrectValues()
     {
         // ReSharper disable once UseUtf8StringLiteral
-        byte[] input = [0x41, 0x42, 0x43, 0x00, 0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x00]; // [ABC, hello] with null terminators
+        byte[] input =
+            [0x41, 0x42, 0x43, 0x00, 0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x00]; // [ABC, hello] with null terminators
         var result = MetricConverter.DeserializeArray<string>(input);
-        
-        Assert.Equal(new[] {"ABC", "hello"}, result);
+
+        Assert.Equal(new[] { "ABC", "hello" }, result);
     }
 
     [Fact]
@@ -332,7 +335,7 @@ public class MetricArrayTypeTests
         long[] original = [1256102875335L, 1656107875000L];
         var input = MetricConverter.SerializeArray(original);
         var result = MetricConverter.DeserializeArray<long>(input);
-        
+
         Assert.Equal(2, result.Length);
         Assert.Equal(original, result);
     }
@@ -357,7 +360,7 @@ public class MetricArrayTypeTests
         string?[] original = ["test", null, "null"];
         var input = MetricConverter.SerializeArray(original);
         var result = MetricConverter.DeserializeArray<string>(input);
-        
+
         Assert.Equal(original, result);
     }
 
@@ -374,7 +377,7 @@ public class MetricArrayTypeTests
         // ReSharper disable once UseUtf8StringLiteral
         byte[] input = [0x00, 0x00, 0x00, 0x00]; // Count = 0
         var result = MetricConverter.DeserializeArray<bool>(input);
-        
+
         Assert.Empty(result);
     }
 

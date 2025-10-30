@@ -88,7 +88,8 @@ public class MetricConverterTests
     [Fact]
     public void ToMetric_StringValue_ReturnsCorrectMetric()
     {
-        var protoMetric = new ProtoMetric { Name = "stringMetric", Datatype = (uint)DataType.String, StringValue = "test string" };
+        var protoMetric = new ProtoMetric
+            { Name = "stringMetric", Datatype = (uint)DataType.String, StringValue = "test string" };
         var result = protoMetric.ToMetric();
 
         Assert.NotNull(result);
@@ -112,7 +113,8 @@ public class MetricConverterTests
     [Fact]
     public void ToMetric_DateTimeValue_ReturnsCorrectMetric()
     {
-        var protoMetric = new ProtoMetric { Name = "dateTimeMetric", Datatype = (uint)DataType.DateTime, LongValue = 1234567890 };
+        var protoMetric = new ProtoMetric
+            { Name = "dateTimeMetric", Datatype = (uint)DataType.DateTime, LongValue = 1234567890 };
         var result = protoMetric.ToMetric();
 
         Assert.NotNull(result);
@@ -152,7 +154,8 @@ public class MetricConverterTests
     public void MetricRoundTrip_Int8Array_PreservesData()
     {
         var originalArray = new sbyte[] { -128, 0, 127 };
-        var originalMetric = new Metric { Name = "int8ArrayMetric", DateType = DataType.Int8Array, Value = originalArray };
+        var originalMetric = new Metric
+            { Name = "int8ArrayMetric", DateType = DataType.Int8Array, Value = originalArray };
 
         var protoMetric = originalMetric.ToProtoMetric();
         var roundTripMetric = protoMetric.ToMetric();
@@ -167,7 +170,8 @@ public class MetricConverterTests
     public void MetricRoundTrip_UInt8Array_PreservesData()
     {
         var originalArray = new byte[] { 0, 128, 255 };
-        var originalMetric = new Metric { Name = "uint8ArrayMetric", DateType = DataType.UInt8Array, Value = originalArray };
+        var originalMetric = new Metric
+            { Name = "uint8ArrayMetric", DateType = DataType.UInt8Array, Value = originalArray };
 
         var protoMetric = originalMetric.ToProtoMetric();
         var roundTripMetric = protoMetric.ToMetric();
@@ -182,7 +186,8 @@ public class MetricConverterTests
     public void MetricRoundTrip_Int16Array_PreservesData()
     {
         var originalArray = new short[] { -32768, 0, 32767 };
-        var originalMetric = new Metric { Name = "int16ArrayMetric", DateType = DataType.Int16Array, Value = originalArray };
+        var originalMetric = new Metric
+            { Name = "int16ArrayMetric", DateType = DataType.Int16Array, Value = originalArray };
 
         var protoMetric = originalMetric.ToProtoMetric();
         var roundTripMetric = protoMetric.ToMetric();
@@ -197,7 +202,8 @@ public class MetricConverterTests
     public void MetricRoundTrip_UInt16Array_PreservesData()
     {
         var originalArray = new ushort[] { 0, 32768, 65535 };
-        var originalMetric = new Metric { Name = "uint16ArrayMetric", DateType = DataType.UInt16Array, Value = originalArray };
+        var originalMetric = new Metric
+            { Name = "uint16ArrayMetric", DateType = DataType.UInt16Array, Value = originalArray };
 
         var protoMetric = originalMetric.ToProtoMetric();
         var roundTripMetric = protoMetric.ToMetric();
@@ -212,7 +218,8 @@ public class MetricConverterTests
     public void MetricRoundTrip_Int32Array_PreservesData()
     {
         var originalArray = new[] { -2147483648, 0, 2147483647 };
-        var originalMetric = new Metric { Name = "int32ArrayMetric", DateType = DataType.Int32Array, Value = originalArray };
+        var originalMetric = new Metric
+            { Name = "int32ArrayMetric", DateType = DataType.Int32Array, Value = originalArray };
 
         var protoMetric = originalMetric.ToProtoMetric();
         var roundTripMetric = protoMetric.ToMetric();
@@ -227,7 +234,8 @@ public class MetricConverterTests
     public void MetricRoundTrip_UInt32Array_PreservesData()
     {
         var originalArray = new uint[] { 0, 2147483648, 4294967295 };
-        var originalMetric = new Metric { Name = "uint32ArrayMetric", DateType = DataType.UInt32Array, Value = originalArray };
+        var originalMetric = new Metric
+            { Name = "uint32ArrayMetric", DateType = DataType.UInt32Array, Value = originalArray };
 
         var protoMetric = originalMetric.ToProtoMetric();
         var roundTripMetric = protoMetric.ToMetric();
@@ -242,7 +250,8 @@ public class MetricConverterTests
     public void MetricRoundTrip_Int64Array_PreservesData()
     {
         var originalArray = new[] { -9223372036854775808, 0, 9223372036854775807 };
-        var originalMetric = new Metric { Name = "int64ArrayMetric", DateType = DataType.Int64Array, Value = originalArray };
+        var originalMetric = new Metric
+            { Name = "int64ArrayMetric", DateType = DataType.Int64Array, Value = originalArray };
 
         var protoMetric = originalMetric.ToProtoMetric();
         var roundTripMetric = protoMetric.ToMetric();
@@ -257,7 +266,8 @@ public class MetricConverterTests
     public void MetricRoundTrip_UInt64Array_PreservesData()
     {
         var originalArray = new ulong[] { 0, 9223372036854775808, 18446744073709551615 };
-        var originalMetric = new Metric { Name = "uint64ArrayMetric", DateType = DataType.UInt64Array, Value = originalArray };
+        var originalMetric = new Metric
+            { Name = "uint64ArrayMetric", DateType = DataType.UInt64Array, Value = originalArray };
 
         var protoMetric = originalMetric.ToProtoMetric();
         var roundTripMetric = protoMetric.ToMetric();
@@ -272,7 +282,8 @@ public class MetricConverterTests
     public void MetricRoundTrip_FloatArray_PreservesData()
     {
         var originalArray = new[] { -1.5f, 0f, 1.5f };
-        var originalMetric = new Metric { Name = "floatArrayMetric", DateType = DataType.FloatArray, Value = originalArray };
+        var originalMetric = new Metric
+            { Name = "floatArrayMetric", DateType = DataType.FloatArray, Value = originalArray };
 
         var protoMetric = originalMetric.ToProtoMetric();
         var roundTripMetric = protoMetric.ToMetric();
@@ -287,7 +298,8 @@ public class MetricConverterTests
     public void MetricRoundTrip_DoubleArray_PreservesData()
     {
         var originalArray = new[] { -1.5, 0.0, 1.5 };
-        var originalMetric = new Metric { Name = "doubleArrayMetric", DateType = DataType.DoubleArray, Value = originalArray };
+        var originalMetric = new Metric
+            { Name = "doubleArrayMetric", DateType = DataType.DoubleArray, Value = originalArray };
 
         var protoMetric = originalMetric.ToProtoMetric();
         var roundTripMetric = protoMetric.ToMetric();
@@ -302,7 +314,8 @@ public class MetricConverterTests
     public void MetricRoundTrip_BooleanArray_PreservesData()
     {
         var originalArray = new[] { true, false, true };
-        var originalMetric = new Metric { Name = "booleanArrayMetric", DateType = DataType.BooleanArray, Value = originalArray };
+        var originalMetric = new Metric
+            { Name = "booleanArrayMetric", DateType = DataType.BooleanArray, Value = originalArray };
 
         var protoMetric = originalMetric.ToProtoMetric();
         var roundTripMetric = protoMetric.ToMetric();
@@ -317,7 +330,8 @@ public class MetricConverterTests
     public void MetricRoundTrip_StringArray_PreservesData()
     {
         var originalArray = new[] { "test1", "test2", null, "test4" };
-        var originalMetric = new Metric { Name = "stringArrayMetric", DateType = DataType.StringArray, Value = originalArray };
+        var originalMetric = new Metric
+            { Name = "stringArrayMetric", DateType = DataType.StringArray, Value = originalArray };
 
         var protoMetric = originalMetric.ToProtoMetric();
         var roundTripMetric = protoMetric.ToMetric();
@@ -332,7 +346,8 @@ public class MetricConverterTests
     public void MetricRoundTrip_DateTimeArray_PreservesData()
     {
         var originalArray = new[] { 0, 1234567890, 9876543210 };
-        var originalMetric = new Metric { Name = "dateTimeArrayMetric", DateType = DataType.DateTimeArray, Value = originalArray };
+        var originalMetric = new Metric
+            { Name = "dateTimeArrayMetric", DateType = DataType.DateTimeArray, Value = originalArray };
 
         var protoMetric = originalMetric.ToProtoMetric();
         var roundTripMetric = protoMetric.ToMetric();

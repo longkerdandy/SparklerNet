@@ -5,26 +5,26 @@
         <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        
+
         <!-- Version Information -->
         <Version>9.0.2-dev</Version>
-        
+
         <!-- NuGet Package Configuration -->
         <!-- Basic Info -->
         <PackageId>SparklerNet</PackageId>
         <Authors>Dennis Gu</Authors>
         <Description>An open-source Sparkplug Client Library for .NET 9.0 or later</Description>
         <PackageTags>C# .NET MQTT Sparkplug IIoT Industry4.0</PackageTags>
-        
+
         <!-- Documentation & Metadata -->
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        
+
         <!-- Link Information -->
         <PackageProjectUrl>https://github.com/longkerdandy/SparklerNet</PackageProjectUrl>
         <RepositoryUrl>https://github.com/longkerdandy/SparklerNet</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
-        
+
         <!-- Build Configuration -->
         <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
         <IncludeSymbols>true</IncludeSymbols>
@@ -33,17 +33,17 @@
 
     <ItemGroup>
         <!-- Package References -->
-        <PackageReference Include="Google.Protobuf" Version="3.33.0" />
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10" />
+        <PackageReference Include="Google.Protobuf" Version="3.33.0"/>
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10"/>
         <PackageReference Include="MQTTnet" Version="5.0.1.1416"/>
-        <PackageReference Include="System.Net.Http" Version="4.3.4" />
-        <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
+        <PackageReference Include="System.Net.Http" Version="4.3.4"/>
+        <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1"/>
     </ItemGroup>
 
     <ItemGroup>
         <!-- Folders and Files -->
         <Folder Include="Core\Protobuf\"/>
-        
+
         <!-- Include the README file in the NuGet package -->
         <None Include="..\README.md" Pack="true" PackagePath=""/>
     </ItemGroup>

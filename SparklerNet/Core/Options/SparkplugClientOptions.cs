@@ -1,5 +1,6 @@
 ﻿using MQTTnet.Packets;
 using SparklerNet.Core.Constants;
+
 // ReSharper disable PropertyCanBeMadeInitOnly.Global
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
 
@@ -21,7 +22,7 @@ public record SparkplugClientOptions
     ///     MUST be unique to all other Sparkplug Host IDs in the infrastructure.
     ///     MUST be a valid UTF-8 string except the reserved characters of + (plus), / (forward slash), and # (number sign).
     /// </summary>
-    public string? HostApplicationId { get; set; }
+    public required string HostApplicationId { get; set; }
 
     /// <summary>
     ///     List of MQTT topics the Sparkplug client will subscribe to.

@@ -1,4 +1,5 @@
 ﻿// ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
+
 namespace SparklerNet.Core.Model;
 
 /// <summary>

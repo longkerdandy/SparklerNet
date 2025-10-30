@@ -1,5 +1,7 @@
 ﻿using MQTTnet;
 
+// ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
+
 namespace SparklerNet.Core.Events;
 
 /// <summary>

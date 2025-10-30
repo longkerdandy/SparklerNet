@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
@@ -13,6 +14,7 @@ using SparklerNet.Core.Topics;
 using static SparklerNet.Core.Constants.SparkplugMessageType;
 using ProtoPayload = SparklerNet.Core.Protobuf.Payload;
 
+// ReSharper disable UnusedMethodReturnValue.Global
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace SparklerNet.HostApplication;
@@ -23,7 +25,7 @@ namespace SparklerNet.HostApplication;
 ///     to outputs of Sparkplug Edge Nodes and/or Devices. Sparkplug Host Applications may also send
 ///     rebirth requests to Edge Nodes when required.
 /// </summary>
-public class SparkplugHostApplication
+public partial class SparkplugHostApplication
 {
     private readonly SparkplugMessageEvents _events = new();
     private readonly ILogger<SparkplugHostApplication> _logger;
@@ -39,8 +41,10 @@ public class SparkplugHostApplication
     public SparkplugHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions,
         ILogger<SparkplugHostApplication> logger)
     {
-        // Validations
-        ArgumentNullException.ThrowIfNull(sparkplugOptions.HostApplicationId);
+        // Validate HostApplicationId does not contain reserved characters: +, /, #
+        if (HostApplicationIdRegex().IsMatch(sparkplugOptions.HostApplicationId))
+            throw new ArgumentException("HostApplicationId cannot contain reserved characters +, / or #.",
+                nameof(sparkplugOptions));
 
         _mqttOptions = mqttOptions;
         _sparkplugOptions = sparkplugOptions;
@@ -57,6 +61,9 @@ public class SparkplugHostApplication
 
     // MQTT Client
     public IMqttClient MqttClient { get; }
+
+    [GeneratedRegex(@"[+/\\#]")]
+    private static partial Regex HostApplicationIdRegex();
 
     public event Func<EdgeNodeMessageEventArgs, Task> EdgeNodeBirthReceivedAsync
     {
@@ -204,7 +211,7 @@ public class SparkplugHostApplication
         // The MQTT Quality of Service (QoS) MUST be set to 1.
         // The MQTT retain flag for the Death Certificate MUST be set to TRUE.
         _mqttOptions.WillTopic = SparkplugTopicFactory.CreateStateTopic(
-            _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId!);
+            _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId);
         _mqttOptions.WillPayload =
             JsonSerializer.SerializeToUtf8Bytes(new StatePayload { Online = false, Timestamp = timestamp });
         _mqttOptions.WillQualityOfServiceLevel = MqttQualityOfServiceLevel.AtLeastOnce;
@@ -227,7 +234,7 @@ public class SparkplugHostApplication
     {
         // Remove the self (STATE) subscription if present.
         var stateTopic = SparkplugTopicFactory.CreateStateTopic(
-            _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId!);
+            _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId);
         _sparkplugOptions.Subscriptions.RemoveAll(topicFilter => topicFilter.Topic == stateTopic);
 
         // Add the default Sparkplug wildcard subscription if the subscriptions option is empty.
@@ -262,7 +269,7 @@ public class SparkplugHostApplication
         // The MQTT retain flag for the Birth Certificate MUST be set to TRUE.
         var stateMessage = new MqttApplicationMessageBuilder()
             .WithTopic(SparkplugTopicFactory.CreateStateTopic(
-                _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId!))
+                _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId))
             .WithPayload(
                 JsonSerializer.SerializeToUtf8Bytes(new StatePayload { Online = online, Timestamp = timestamp }))
             .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)

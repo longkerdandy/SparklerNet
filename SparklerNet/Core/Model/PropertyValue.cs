@@ -1,4 +1,5 @@
 ﻿// ReSharper disable PropertyCanBeMadeInitOnly.Global
+
 namespace SparklerNet.Core.Model;
 
 /// <summary>
