@@ -37,8 +37,8 @@ public static class PropertyConverter
             DataType.Float => () => protoProperty.FloatValue = Convert.ToSingle(property.Value),
             DataType.Double => () => protoProperty.DoubleValue = Convert.ToDouble(property.Value),
             DataType.Boolean => () => protoProperty.BooleanValue = Convert.ToBoolean(property.Value),
-            DataType.DateTime => () => protoProperty.LongValue = property.Value is long value
-                ? Convert.ToUInt64(value)
+            DataType.DateTime => () => protoProperty.LongValue = property.Value is long
+                ? Convert.ToUInt64(property.Value)
                 : throw new NotSupportedException("Value for DateTime type must be long"),
             DataType.String or DataType.Text => () => protoProperty.StringValue = property.Value!.ToString()!,
             DataType.PropertySet when property.Value is PropertySet propertySet =>

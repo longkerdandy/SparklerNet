@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Globalization;
+using System.Text.RegularExpressions;
 using SparklerNet.Core.Constants;
 
 namespace SparklerNet.Core.Topics;
@@ -66,6 +67,6 @@ public static partial class SparkplugTopicParser
     // Pattern 2 (STATE messages): <namespace>/STATE/<host_id>
     [GeneratedRegex(
         "^(?<namespace>[^/]+)/(?<groupId>[^/]+)/(?<messageType>[^/]+)/(?<edgeNodeId>[^/]+)(/(?<deviceId>[^/]+))?$|^(?<namespace>[^/]+)/(STATE)/(?<hostId>[^/]+)$",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled, "zh-CN")]
+        RegexOptions.IgnoreCase | RegexOptions.Compiled)]
     private static partial Regex TopicRegex();
 }

@@ -142,7 +142,7 @@ public class DataSetTests
         var dataSet = new DataSet
         {
             Columns = ["Column1", "Column2"]
-            // ColumnData intentionally aren't initialized with Column1 to test TryGetValue
+            // ColumnData intentionally isn't initialized with Column1 to test TryGetValue
         };
         Assert.Equal(0, dataSet.RowCount);
         // Add data to Column1
