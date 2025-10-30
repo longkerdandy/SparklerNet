@@ -1,4 +1,4 @@
-﻿using JetBrains.Annotations;
+﻿// ReSharper disable PropertyCanBeMadeInitOnly.Global
 
 namespace SparklerNet.Core.Model;
 
@@ -7,7 +7,6 @@ namespace SparklerNet.Core.Model;
 ///     along with metadata used to describe the information it contains. These also represent tags in classic SCADA
 ///     systems.
 /// </summary>
-[PublicAPI]
 public record Metric
 {
     /// <summary>

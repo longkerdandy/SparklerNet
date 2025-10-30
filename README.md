@@ -34,7 +34,7 @@ The library aims to fully implement the complete Sparkplug protocol, with planne
 - ✅ Connection to MQTT brokers v3.1.1 or v5.0
 - ✅ Connection using TCP, TCP+TLS and WebSockets
 - ✅ Support for Sparkplug B data types (Int8/16/32/64, UInt8/16/32/64, Float, Double, Boolean, String, DateTime, Text, UUID, DataSet, Bytes, File, Template, PropertySet, PropertySetList)
-- ⬜ Support for Sparkplug B array data types (Int8Array, Int16Array, Int32Array, Int64Array, UInt8Array, UInt16Array, UInt32Array, UInt64Array, FloatArray, DoubleArray, BooleanArray, StringArray, DateTimeArray)
+- ✅ Support for Sparkplug B array data types (Int8Array, Int16Array, Int32Array, Int64Array, UInt8Array, UInt16Array, UInt32Array, UInt64Array, FloatArray, DoubleArray, BooleanArray, StringArray, DateTimeArray)
 
 ### Host Application
 

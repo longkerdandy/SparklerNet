@@ -133,7 +133,7 @@ public class MetricConverterTests
         Assert.Equal("nullMetric", result.Name);
         Assert.Equal((uint)DataType.Int32, result.Datatype);
         Assert.True(result.IsNull);
-        Assert.Equal(0U, result.IntValue); // Default value for IntValue when IsNull is true
+        Assert.Equal(0U, result.IntValue);
     }
 
     [Fact]
@@ -148,5 +148,213 @@ public class MetricConverterTests
     {
         var protoMetric = new ProtoMetric { Name = "unsupportedMetric", Datatype = 999 };
         Assert.Throws<NotSupportedException>(() => protoMetric.ToMetric());
+    }
+
+    [Fact]
+    public void MetricRoundTrip_Int8Array_PreservesData()
+    {
+        var originalArray = new sbyte[] { -128, 0, 127 };
+        var originalMetric = new Metric
+            { Name = "int8ArrayMetric", DateType = DataType.Int8Array, Value = originalArray };
+
+        var protoMetric = originalMetric.ToProtoMetric();
+        var roundTripMetric = protoMetric.ToMetric();
+
+        Assert.NotNull(roundTripMetric);
+        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
+        Assert.Equal(originalMetric.DateType, roundTripMetric.DateType);
+        Assert.Equal(originalArray, roundTripMetric.Value as sbyte[]);
+    }
+
+    [Fact]
+    public void MetricRoundTrip_UInt8Array_PreservesData()
+    {
+        var originalArray = new byte[] { 0, 128, 255 };
+        var originalMetric = new Metric
+            { Name = "uint8ArrayMetric", DateType = DataType.UInt8Array, Value = originalArray };
+
+        var protoMetric = originalMetric.ToProtoMetric();
+        var roundTripMetric = protoMetric.ToMetric();
+
+        Assert.NotNull(roundTripMetric);
+        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
+        Assert.Equal(originalMetric.DateType, roundTripMetric.DateType);
+        Assert.Equal(originalArray, roundTripMetric.Value as byte[]);
+    }
+
+    [Fact]
+    public void MetricRoundTrip_Int16Array_PreservesData()
+    {
+        var originalArray = new short[] { -32768, 0, 32767 };
+        var originalMetric = new Metric
+            { Name = "int16ArrayMetric", DateType = DataType.Int16Array, Value = originalArray };
+
+        var protoMetric = originalMetric.ToProtoMetric();
+        var roundTripMetric = protoMetric.ToMetric();
+
+        Assert.NotNull(roundTripMetric);
+        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
+        Assert.Equal(originalMetric.DateType, roundTripMetric.DateType);
+        Assert.Equal(originalArray, roundTripMetric.Value as short[]);
+    }
+
+    [Fact]
+    public void MetricRoundTrip_UInt16Array_PreservesData()
+    {
+        var originalArray = new ushort[] { 0, 32768, 65535 };
+        var originalMetric = new Metric
+            { Name = "uint16ArrayMetric", DateType = DataType.UInt16Array, Value = originalArray };
+
+        var protoMetric = originalMetric.ToProtoMetric();
+        var roundTripMetric = protoMetric.ToMetric();
+
+        Assert.NotNull(roundTripMetric);
+        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
+        Assert.Equal(originalMetric.DateType, roundTripMetric.DateType);
+        Assert.Equal(originalArray, roundTripMetric.Value as ushort[]);
+    }
+
+    [Fact]
+    public void MetricRoundTrip_Int32Array_PreservesData()
+    {
+        var originalArray = new[] { -2147483648, 0, 2147483647 };
+        var originalMetric = new Metric
+            { Name = "int32ArrayMetric", DateType = DataType.Int32Array, Value = originalArray };
+
+        var protoMetric = originalMetric.ToProtoMetric();
+        var roundTripMetric = protoMetric.ToMetric();
+
+        Assert.NotNull(roundTripMetric);
+        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
+        Assert.Equal(originalMetric.DateType, roundTripMetric.DateType);
+        Assert.Equal(originalArray, roundTripMetric.Value as int[]);
+    }
+
+    [Fact]
+    public void MetricRoundTrip_UInt32Array_PreservesData()
+    {
+        var originalArray = new uint[] { 0, 2147483648, 4294967295 };
+        var originalMetric = new Metric
+            { Name = "uint32ArrayMetric", DateType = DataType.UInt32Array, Value = originalArray };
+
+        var protoMetric = originalMetric.ToProtoMetric();
+        var roundTripMetric = protoMetric.ToMetric();
+
+        Assert.NotNull(roundTripMetric);
+        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
+        Assert.Equal(originalMetric.DateType, roundTripMetric.DateType);
+        Assert.Equal(originalArray, roundTripMetric.Value as uint[]);
+    }
+
+    [Fact]
+    public void MetricRoundTrip_Int64Array_PreservesData()
+    {
+        var originalArray = new[] { -9223372036854775808, 0, 9223372036854775807 };
+        var originalMetric = new Metric
+            { Name = "int64ArrayMetric", DateType = DataType.Int64Array, Value = originalArray };
+
+        var protoMetric = originalMetric.ToProtoMetric();
+        var roundTripMetric = protoMetric.ToMetric();
+
+        Assert.NotNull(roundTripMetric);
+        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
+        Assert.Equal(originalMetric.DateType, roundTripMetric.DateType);
+        Assert.Equal(originalArray, roundTripMetric.Value as long[]);
+    }
+
+    [Fact]
+    public void MetricRoundTrip_UInt64Array_PreservesData()
+    {
+        var originalArray = new ulong[] { 0, 9223372036854775808, 18446744073709551615 };
+        var originalMetric = new Metric
+            { Name = "uint64ArrayMetric", DateType = DataType.UInt64Array, Value = originalArray };
+
+        var protoMetric = originalMetric.ToProtoMetric();
+        var roundTripMetric = protoMetric.ToMetric();
+
+        Assert.NotNull(roundTripMetric);
+        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
+        Assert.Equal(originalMetric.DateType, roundTripMetric.DateType);
+        Assert.Equal(originalArray, roundTripMetric.Value as ulong[]);
+    }
+
+    [Fact]
+    public void MetricRoundTrip_FloatArray_PreservesData()
+    {
+        var originalArray = new[] { -1.5f, 0f, 1.5f };
+        var originalMetric = new Metric
+            { Name = "floatArrayMetric", DateType = DataType.FloatArray, Value = originalArray };
+
+        var protoMetric = originalMetric.ToProtoMetric();
+        var roundTripMetric = protoMetric.ToMetric();
+
+        Assert.NotNull(roundTripMetric);
+        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
+        Assert.Equal(originalMetric.DateType, roundTripMetric.DateType);
+        Assert.Equal(originalArray, roundTripMetric.Value as float[]);
+    }
+
+    [Fact]
+    public void MetricRoundTrip_DoubleArray_PreservesData()
+    {
+        var originalArray = new[] { -1.5, 0.0, 1.5 };
+        var originalMetric = new Metric
+            { Name = "doubleArrayMetric", DateType = DataType.DoubleArray, Value = originalArray };
+
+        var protoMetric = originalMetric.ToProtoMetric();
+        var roundTripMetric = protoMetric.ToMetric();
+
+        Assert.NotNull(roundTripMetric);
+        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
+        Assert.Equal(originalMetric.DateType, roundTripMetric.DateType);
+        Assert.Equal(originalArray, roundTripMetric.Value as double[]);
+    }
+
+    [Fact]
+    public void MetricRoundTrip_BooleanArray_PreservesData()
+    {
+        var originalArray = new[] { true, false, true };
+        var originalMetric = new Metric
+            { Name = "booleanArrayMetric", DateType = DataType.BooleanArray, Value = originalArray };
+
+        var protoMetric = originalMetric.ToProtoMetric();
+        var roundTripMetric = protoMetric.ToMetric();
+
+        Assert.NotNull(roundTripMetric);
+        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
+        Assert.Equal(originalMetric.DateType, roundTripMetric.DateType);
+        Assert.Equal(originalArray, roundTripMetric.Value as bool[]);
+    }
+
+    [Fact]
+    public void MetricRoundTrip_StringArray_PreservesData()
+    {
+        var originalArray = new[] { "test1", "test2", null, "test4" };
+        var originalMetric = new Metric
+            { Name = "stringArrayMetric", DateType = DataType.StringArray, Value = originalArray };
+
+        var protoMetric = originalMetric.ToProtoMetric();
+        var roundTripMetric = protoMetric.ToMetric();
+
+        Assert.NotNull(roundTripMetric);
+        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
+        Assert.Equal(originalMetric.DateType, roundTripMetric.DateType);
+        Assert.Equal(originalArray, roundTripMetric.Value as string[]);
+    }
+
+    [Fact]
+    public void MetricRoundTrip_DateTimeArray_PreservesData()
+    {
+        var originalArray = new[] { 0, 1234567890, 9876543210 };
+        var originalMetric = new Metric
+            { Name = "dateTimeArrayMetric", DateType = DataType.DateTimeArray, Value = originalArray };
+
+        var protoMetric = originalMetric.ToProtoMetric();
+        var roundTripMetric = protoMetric.ToMetric();
+
+        Assert.NotNull(roundTripMetric);
+        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
+        Assert.Equal(originalMetric.DateType, roundTripMetric.DateType);
+        Assert.Equal(originalArray, roundTripMetric.Value as long[]);
     }
 }

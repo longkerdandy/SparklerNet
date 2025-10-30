@@ -1,12 +1,10 @@
-﻿using JetBrains.Annotations;
-using ProtoMetaData = SparklerNet.Core.Protobuf.Payload.Types.MetaData;
+﻿using ProtoMetaData = SparklerNet.Core.Protobuf.Payload.Types.MetaData;
 
 namespace SparklerNet.Core.Model.Conversion;
 
 /// <summary>
 ///     Converts between <see cref="MetaData" /> and <see cref="ProtoMetaData" />.
 /// </summary>
-[PublicAPI]
 public static class MetaDataConverter
 {
     /// <summary>
@@ -24,7 +22,7 @@ public static class MetaDataConverter
         if (metaData.IsMultiPart.HasValue) protoMetaData.IsMultiPart = metaData.IsMultiPart.Value;
         if (!string.IsNullOrEmpty(metaData.ContentType)) protoMetaData.ContentType = metaData.ContentType;
         if (metaData.Size.HasValue) protoMetaData.Size = metaData.Size.Value;
-        if (metaData.Seq.HasValue) protoMetaData.Seq = (ulong)metaData.Seq.Value;
+        if (metaData.Seq.HasValue) protoMetaData.Seq = metaData.Seq.Value;
         if (!string.IsNullOrEmpty(metaData.FileName)) protoMetaData.FileName = metaData.FileName;
         if (!string.IsNullOrEmpty(metaData.FileType)) protoMetaData.FileType = metaData.FileType;
         if (!string.IsNullOrEmpty(metaData.Md5)) protoMetaData.Md5 = metaData.Md5;
@@ -47,13 +45,13 @@ public static class MetaDataConverter
         var metaData = new MetaData
         {
             IsMultiPart = protoMetaData.IsMultiPart, // Defaults to false if not set
-            ContentType = protoMetaData.ContentType, // Will be empty string if not set
+            ContentType = protoMetaData.ContentType, // Will be an empty string if not set
             Size = protoMetaData.Size, // Defaults to 0 if not set
-            Seq = (int)protoMetaData.Seq, // Defaults to 0 if not set
-            FileName = protoMetaData.FileName, // Will be empty string if not set
-            FileType = protoMetaData.FileType, // Will be empty string if not set
-            Md5 = protoMetaData.Md5, // Will be empty string if not set
-            Description = protoMetaData.Description // Will be empty string if not set
+            Seq = protoMetaData.Seq, // Defaults to 0 if not set
+            FileName = protoMetaData.FileName, // Will be an empty string if not set
+            FileType = protoMetaData.FileType, // Will be an empty string if not set
+            Md5 = protoMetaData.Md5, // Will be an empty string if not set
+            Description = protoMetaData.Description // Will be an empty string if not set
         };
 
         return metaData;

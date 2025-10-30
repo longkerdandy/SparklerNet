@@ -1,11 +1,10 @@
-﻿using JetBrains.Annotations;
+﻿// ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
 
 namespace SparklerNet.Core.Model;
 
 /// <summary>
 ///     A Sparkplug PropertySetList object is an array of <see cref="PropertySet" /> objects.
 /// </summary>
-[PublicAPI]
 public record PropertySetList
 {
     /// <summary>

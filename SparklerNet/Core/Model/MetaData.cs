@@ -1,15 +1,12 @@
-﻿using JetBrains.Annotations;
-
-namespace SparklerNet.Core.Model;
+﻿namespace SparklerNet.Core.Model;
 
 /// <summary>
 ///     A Sparkplug MetaData object is used to describe different types of binary data.
 /// </summary>
-[PublicAPI]
 public record MetaData
 {
     /// <summary>
-    ///     Whether the metric contains part of a multi-part message.
+    ///     Whether the metric contains part of a multipart message.
     /// </summary>
     public bool? IsMultiPart { get; init; }
 
@@ -24,9 +21,9 @@ public record MetaData
     public ulong? Size { get; init; }
 
     /// <summary>
-    ///     The sequence number of this part of a multipart metric. 0 ~ 255.
+    ///     The sequence number of this part of a multipart metric.
     /// </summary>
-    public int? Seq { get; init; }
+    public ulong? Seq { get; init; }
 
     /// <summary>
     ///     If this is a file metric, representing the file name.

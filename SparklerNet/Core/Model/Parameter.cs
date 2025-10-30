@@ -1,4 +1,4 @@
-﻿using JetBrains.Annotations;
+﻿// ReSharper disable PropertyCanBeMadeInitOnly.Global
 
 namespace SparklerNet.Core.Model;
 
@@ -6,7 +6,6 @@ namespace SparklerNet.Core.Model;
 ///     A Sparkplug Template Parameter is a metadata field for a Template.
 ///     MUST be one of the enumerated values as shown in the Sparkplug Basic Data Types.
 /// </summary>
-[PublicAPI]
 public record Parameter
 {
     /// <summary>
@@ -15,7 +14,7 @@ public record Parameter
     public required string Name { get; init; }
 
     /// <summary>
-    ///     The template parameter date type, MUST be one of the enumerated values as shown in the Sparkplug Basic Data Types.
+    ///     The template parameter date type MUST be one of the enumerated values as shown in the Sparkplug Basic Data Types.
     /// </summary>
     public DataType Type { get; init; }
 

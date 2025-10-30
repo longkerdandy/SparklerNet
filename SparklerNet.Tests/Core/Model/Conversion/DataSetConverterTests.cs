@@ -52,18 +52,18 @@ public class DataSetConverterTests
             protoDataSet.Types_.ToList());
         Assert.Equal(3, protoDataSet.Rows.Count);
 
-        // Verify first row
+        // Verify the first row
         Assert.Equal(3, protoDataSet.Rows[0].Elements.Count);
         Assert.Equal(1u, protoDataSet.Rows[0].Elements[0].IntValue);
         Assert.Equal("Alice", protoDataSet.Rows[0].Elements[1].StringValue);
         Assert.True(protoDataSet.Rows[0].Elements[2].BooleanValue);
 
-        // Verify second row
+        // Verify the second row
         Assert.Equal(2u, protoDataSet.Rows[1].Elements[0].IntValue);
         Assert.Equal("Bob", protoDataSet.Rows[1].Elements[1].StringValue);
         Assert.False(protoDataSet.Rows[1].Elements[2].BooleanValue);
 
-        // Verify third row
+        // Verify the third row
         Assert.Equal(3u, protoDataSet.Rows[2].Elements[0].IntValue);
         Assert.Equal("Charlie", protoDataSet.Rows[2].Elements[1].StringValue);
         Assert.True(protoDataSet.Rows[2].Elements[2].BooleanValue);
@@ -194,9 +194,9 @@ public class DataSetConverterTests
         Assert.Equal(3, dataSet.RowCount);
         Assert.Equal(["ID", "Name", "Active"], dataSet.Columns);
         Assert.Equal([DataType.Int32, DataType.String, DataType.Boolean], dataSet.Types);
-        Assert.Equal(new List<int> { 1, 2, 3 }, dataSet.ColumnData["ID"].Cast<int>());
-        Assert.Equal(new List<string> { "Alice", "Bob", "Charlie" }, dataSet.ColumnData["Name"].Cast<string>());
-        Assert.Equal(new List<bool> { true, false, true }, dataSet.ColumnData["Active"].Cast<bool>());
+        Assert.Equal([1, 2, 3], dataSet.ColumnData["ID"].Cast<int>());
+        Assert.Equal(["Alice", "Bob", "Charlie"], dataSet.ColumnData["Name"].Cast<string>());
+        Assert.Equal([true, false, true], dataSet.ColumnData["Active"].Cast<bool>());
     }
 
     [Fact]

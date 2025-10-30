@@ -1,6 +1,6 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Google.Protobuf;
-using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
 using MQTTnet.Formatter;
@@ -14,6 +14,9 @@ using SparklerNet.Core.Topics;
 using static SparklerNet.Core.Constants.SparkplugMessageType;
 using ProtoPayload = SparklerNet.Core.Protobuf.Payload;
 
+// ReSharper disable UnusedMethodReturnValue.Global
+// ReSharper disable MemberCanBePrivate.Global
+
 namespace SparklerNet.HostApplication;
 
 /// <summary>
@@ -22,7 +25,7 @@ namespace SparklerNet.HostApplication;
 ///     to outputs of Sparkplug Edge Nodes and/or Devices. Sparkplug Host Applications may also send
 ///     rebirth requests to Edge Nodes when required.
 /// </summary>
-public class SparkplugHostApplication
+public partial class SparkplugHostApplication
 {
     private readonly SparkplugMessageEvents _events = new();
     private readonly ILogger<SparkplugHostApplication> _logger;
@@ -38,8 +41,10 @@ public class SparkplugHostApplication
     public SparkplugHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions,
         ILogger<SparkplugHostApplication> logger)
     {
-        // Validations
-        ArgumentNullException.ThrowIfNull(sparkplugOptions.HostApplicationId);
+        // Validate HostApplicationId does not contain reserved characters: +, /, #
+        if (HostApplicationIdRegex().IsMatch(sparkplugOptions.HostApplicationId))
+            throw new ArgumentException("HostApplicationId cannot contain reserved characters +, / or #.",
+                nameof(sparkplugOptions));
 
         _mqttOptions = mqttOptions;
         _sparkplugOptions = sparkplugOptions;
@@ -55,7 +60,10 @@ public class SparkplugHostApplication
     }
 
     // MQTT Client
-    [UsedImplicitly] public IMqttClient MqttClient { get; }
+    public IMqttClient MqttClient { get; }
+
+    [GeneratedRegex(@"[+/#]", RegexOptions.Compiled)]
+    private static partial Regex HostApplicationIdRegex();
 
     public event Func<EdgeNodeMessageEventArgs, Task> EdgeNodeBirthReceivedAsync
     {
@@ -175,7 +183,6 @@ public class SparkplugHostApplication
     ///     Connect to the MQTT Broker and use the Will Message/Settings compliant with the Sparkplug specification.
     ///     The Sparkplug specification require using a v3.1.1 or v5.0 compliant MQTT Client.
     /// </summary>
-    [UsedImplicitly]
     protected async Task<MqttClientConnectResult> ConnectAsync(long timestamp)
     {
         // The CONNECT Control Packet for all Sparkplug Host Applications when using MQTT 3.1.1 MUST set the MQTT 
@@ -196,9 +203,7 @@ public class SparkplugHostApplication
             default:
                 _logger.LogError("Trying to connect to MQTT Broker with unsupported protocol version {ProtocolVersion}",
                     _mqttOptions.ProtocolVersion);
-                throw new ArgumentOutOfRangeException(nameof(_mqttOptions.ProtocolVersion),
-                    _mqttOptions.ProtocolVersion,
-                    "Unsupported MQTT protocol version");
+                throw new NotSupportedException($"Unsupported MQTT protocol version: {_mqttOptions.ProtocolVersion}");
         }
 
         // When the Sparkplug Host Application MQTT client establishes an MQTT session to the MQTT Server(s), the
@@ -206,7 +211,7 @@ public class SparkplugHostApplication
         // The MQTT Quality of Service (QoS) MUST be set to 1.
         // The MQTT retain flag for the Death Certificate MUST be set to TRUE.
         _mqttOptions.WillTopic = SparkplugTopicFactory.CreateStateTopic(
-            _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId!);
+            _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId);
         _mqttOptions.WillPayload =
             JsonSerializer.SerializeToUtf8Bytes(new StatePayload { Online = false, Timestamp = timestamp });
         _mqttOptions.WillQualityOfServiceLevel = MqttQualityOfServiceLevel.AtLeastOnce;
@@ -225,12 +230,11 @@ public class SparkplugHostApplication
     ///     only a single Sparkplug Edge Node using this: 'spBv1.0/Group1/+/EdgeNode1/#'. A Sparkplug Host Application could
     ///     subscribe to a combination of specific Sparkplug Groups and/or Edge Nodes as well.
     /// </summary>
-    [UsedImplicitly]
     protected async Task<MqttClientSubscribeResult> SubscribeAsync()
     {
         // Remove the self (STATE) subscription if present.
         var stateTopic = SparkplugTopicFactory.CreateStateTopic(
-            _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId!);
+            _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId);
         _sparkplugOptions.Subscriptions.RemoveAll(topicFilter => topicFilter.Topic == stateTopic);
 
         // Add the default Sparkplug wildcard subscription if the subscriptions option is empty.
@@ -259,14 +263,13 @@ public class SparkplugHostApplication
     ///     Publish the Sparkplug STATE message to the MQTT broker.
     ///     Once an MQTT Session has been established,  the Sparkplug Host Application MUST publish a new STATE message.
     /// </summary>
-    [UsedImplicitly]
     protected async Task<MqttClientPublishResult> PublishStateMessageAsync(bool online, long timestamp)
     {
         // The MQTT Quality of Service (QoS) MUST be set to 1.
         // The MQTT retain flag for the Birth Certificate MUST be set to TRUE.
         var stateMessage = new MqttApplicationMessageBuilder()
             .WithTopic(SparkplugTopicFactory.CreateStateTopic(
-                _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId!))
+                _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId))
             .WithPayload(
                 JsonSerializer.SerializeToUtf8Bytes(new StatePayload { Online = online, Timestamp = timestamp }))
             .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
@@ -331,7 +334,6 @@ public class SparkplugHostApplication
     /// <param name="message">The MQTT message to publish.</param>
     /// <param name="messageType">The type of message being published (for logging purposes).</param>
     /// <returns>The MQTT Client Publish Result.</returns>
-    [UsedImplicitly]
     protected async Task<MqttClientPublishResult> PublishMessageAsync(MqttApplicationMessage message,
         string messageType)
     {
@@ -350,7 +352,6 @@ public class SparkplugHostApplication
     ///     Handles incoming MQTT messages and triggers appropriate events based on message type.
     ///     Unsupported message types will be published to the UnsupportedReceived event.
     /// </summary>
-    [UsedImplicitly]
     protected async Task HandleApplicationMessageReceivedAsync(MqttApplicationMessageReceivedEventArgs eventArgs)
     {
         try
@@ -410,7 +411,6 @@ public class SparkplugHostApplication
     ///     Handles MQTT client disconnected events and triggers the DisconnectedReceived event.
     /// </summary>
     /// <param name="eventArgs">The MQTT client disconnected event arguments.</param>
-    [UsedImplicitly]
     protected async Task HandleDisconnectedAsync(MqttClientDisconnectedEventArgs eventArgs)
     {
         if (eventArgs.Reason == MqttClientDisconnectReason.NormalDisconnection)

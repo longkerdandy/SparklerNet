@@ -1,7 +1,7 @@
 ﻿namespace SparklerNet.Core.Model;
 
 /// <summary>
-///     The Sparkplug defined data types used for various Sparkplug constructs including Metric datatypes Property Value
+///     The Sparkplug defined data types used for various Sparkplug constructs, including Metric datatypes Property Value
 ///     types, DataSet types, and Template Parameter types.
 ///     Corresponding to the data type definitions in the Sparkplug's Protobuf schema file.
 /// </summary>
@@ -27,6 +27,7 @@ public enum DataType
     Text = 14,
 
     // Additional Metric Types
+    // ReSharper disable once InconsistentNaming
     UUID = 15,
     DataSet = 16,
     Bytes = 17,

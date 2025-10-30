@@ -1,5 +1,4 @@
-﻿using JetBrains.Annotations;
-using static Google.Protobuf.ByteString;
+﻿using static Google.Protobuf.ByteString;
 using ProtoPayload = SparklerNet.Core.Protobuf.Payload;
 
 namespace SparklerNet.Core.Model.Conversion;
@@ -7,7 +6,6 @@ namespace SparklerNet.Core.Model.Conversion;
 /// <summary>
 ///     Converts between <see cref="Payload" /> and <see cref="ProtoPayload" />.
 /// </summary>
-[PublicAPI]
 public static class PayloadConverter
 {
     /// <summary>
@@ -30,7 +28,7 @@ public static class PayloadConverter
         // Convert and add metrics
         foreach (var metric in payload.Metrics) protoPayload.Metrics.Add(metric.ToProtoMetric());
 
-        // Set body if it has a value
+        // Set the body if it has a value
         if (payload.Body != null) protoPayload.Body = CopyFrom(payload.Body);
 
         return protoPayload;
@@ -50,7 +48,7 @@ public static class PayloadConverter
         byte[]? bodyBytes = null;
         if (protoPayload.Body != null && protoPayload.Body.Length > 0) bodyBytes = protoPayload.Body.ToByteArray();
 
-        // Create payload with all init properties in initializer
+        // Create a payload with all init properties in initializer
         var payload = new Payload
         {
             // Set basic properties

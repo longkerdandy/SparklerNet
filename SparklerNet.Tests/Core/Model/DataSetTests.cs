@@ -24,7 +24,7 @@ public class DataSetTests
             Columns = ["Column1", "Column2"]
         };
         var rowData = new List<object> { 1, 2, 3 }; // 3 values but only 2 columns
-        Assert.Throws<ArgumentException>(() => dataSet.AddRow(rowData));
+        Assert.Throws<InvalidOperationException>(() => dataSet.AddRow(rowData));
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public class DataSetTests
                 { "Column3", [true, false, true] }
             }
         };
-        Assert.Throws<IndexOutOfRangeException>(() => dataSet.GetRows().ToList());
+        Assert.Throws<InvalidOperationException>(() => dataSet.GetRows().ToList());
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public class DataSetTests
                 { "Column2", ["A"] } // Only one value for Column2
             }
         };
-        Assert.Throws<IndexOutOfRangeException>(() => dataSet.GetRows().ToList());
+        Assert.Throws<InvalidOperationException>(() => dataSet.GetRows().ToList());
     }
 
     [Fact]
@@ -130,7 +130,7 @@ public class DataSetTests
         };
         // Add 100 rows to test lazy evaluation
         for (var i = 0; i < 100; i++) dataSet.AddRow([i]);
-        // Only take the first 10 rows without enumerating all
+        // Only take the first 10 rows without listing all
         var rows = dataSet.GetRows().Take(10).ToList();
         Assert.Equal(10, rows.Count);
         for (var i = 0; i < 10; i++) Assert.Equal([i], rows[i]);
@@ -142,7 +142,7 @@ public class DataSetTests
         var dataSet = new DataSet
         {
             Columns = ["Column1", "Column2"]
-            // ColumnData intentionally not initialized with Column1 to test TryGetValue
+            // ColumnData intentionally isn't initialized with Column1 to test TryGetValue
         };
         Assert.Equal(0, dataSet.RowCount);
         // Add data to Column1

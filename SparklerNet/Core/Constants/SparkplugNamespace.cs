@@ -2,7 +2,7 @@
 
 /// <summary>
 ///     The namespace element of the topic namespace is the root element that will define both the structure of the
-///     remaining namespace elements as well as the encoding used for the associated payload data. The Sparkplug
+///     remaining namespace elements and the encoding used for the associated payload data. The Sparkplug
 ///     specification defines two namespaces. One is for Sparkplug payload definition A (now deprecated), and the
 ///     second is for the Sparkplug payload definition B.
 ///     Only Sparkplug payload definition B is supported in SparklerNet.
@@ -34,7 +34,8 @@ public static class SparkplugNamespace
     /// <exception cref="NotSupportedException">Thrown when the Sparkplug namespace is not supported.</exception>
     public static SparkplugVersion ToSparkplugVersion(string @namespace)
     {
-        if (string.Equals(SparkplugBv1, @namespace, StringComparison.OrdinalIgnoreCase)) return SparkplugVersion.V300;
-        throw new NotSupportedException($"Not supported Sparkplug namespace {@namespace}.");
+        return string.Equals(SparkplugBv1, @namespace, StringComparison.OrdinalIgnoreCase)
+            ? SparkplugVersion.V300
+            : throw new NotSupportedException($"Not supported Sparkplug namespace {@namespace}.");
     }
 }
