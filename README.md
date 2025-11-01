@@ -65,8 +65,8 @@ The library aims to fully implement the complete Sparkplug protocol, with planne
 
 ### Message Validation
 
-- ⬜ Payload validation for all message types
-- ⬜ Group ID and Edge Node ID validation
+- ✅ Host Application ID validation
+- ✅ Group ID, Edge Node ID and Device ID validation
 
 ### Additional Features
 
