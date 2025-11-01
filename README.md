@@ -40,7 +40,7 @@ The library aims to fully implement the complete Sparkplug protocol, with planne
 
 - ✅ Sparkplug-compliant Will message
 - ✅ STATE message publishing (Birth/Death certificates)
-- ✅ Deafult wildcard topic support (spBv1.0/#)
+- ✅ Default wildcard topic support (spBv1.0/#)
 - ✅ Specific group and edge node subscription support
 - ⬜ Sparkplug Host Application Message Ordering
 - ⬜ Mapping between Metric's name and alias
