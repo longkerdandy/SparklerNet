@@ -27,7 +27,7 @@ The library aims to fully implement the complete Sparkplug protocol, with planne
 - .NET 9.0 SDK or later
 - MQTT protocol-compatible message broker (e.g., Mosquitto, HiveMQ)
 
-## Roadmap - Release v1.0.0
+## Roadmap - Release v1.0
 
 ### Core Functionality
 
@@ -85,7 +85,7 @@ Or reference it directly in your project:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="SparklerNet" Version="0.9.0" />
+  <PackageReference Include="SparklerNet" Version="0.9.*" />
 </ItemGroup>
 ```
 
