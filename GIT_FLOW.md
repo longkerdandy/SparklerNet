@@ -66,7 +66,7 @@ Create the initial `develop` branch from `main` and push it to the remote reposi
 6. Create two Pull Requests:
    - One to merge into `main`
    - One to merge back into `develop`
-7. After approval and testing, merge both Pull Requests, tag the release on the `main` branch, and delete the release branch.
+7. After approval, merge both Pull Requests, tag the release on the `main` branch, and delete the release branch.
 
 ### Fix Critical Issues in Production
 
