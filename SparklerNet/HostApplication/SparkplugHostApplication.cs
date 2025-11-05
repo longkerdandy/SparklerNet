@@ -285,7 +285,7 @@ public class SparkplugHostApplication
     public async Task<MqttClientPublishResult> PublishEdgeNodeCommandMessageAsync(string groupId, string edgeNodeId,
         Payload payload)
     {
-        // Validate the group ID and edge node ID and the payload.
+        // Validate the group ID, edge node ID and the payload.
         SparkplugNamespace.ValidateNamespaceElement(groupId, nameof(groupId));
         SparkplugNamespace.ValidateNamespaceElement(edgeNodeId, nameof(edgeNodeId));
         ArgumentNullException.ThrowIfNull(payload);
@@ -313,7 +313,7 @@ public class SparkplugHostApplication
     public async Task<MqttClientPublishResult> PublishDeviceCommandMessageAsync(string groupId, string edgeNodeId,
         string deviceId, Payload payload)
     {
-        // Validate the group ID and edge node ID and the payload.
+        // Validate the group ID, edge node ID, device ID and the payload.
         SparkplugNamespace.ValidateNamespaceElement(groupId, nameof(groupId));
         SparkplugNamespace.ValidateNamespaceElement(edgeNodeId, nameof(edgeNodeId));
         SparkplugNamespace.ValidateNamespaceElement(deviceId, nameof(deviceId));
