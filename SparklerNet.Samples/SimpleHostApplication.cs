@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
 using MQTTnet.Formatter;
@@ -39,6 +40,7 @@ public class SimpleHostApplication
     /// <summary>
     ///     Initialize and run the SimpleHostApplication
     /// </summary>
+    [SuppressMessage("ReSharper", "RedundantVerbatimStringPrefix")]
     public static async Task Main()
     {
         // Configure Serilog logging
@@ -292,7 +294,7 @@ public class SimpleHostApplication
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, isNodeCommand ? "Failed to send edge node command" : "Failed to send device command");
+            _logger.LogError(ex, "Failed to send {CommandType} command", isNodeCommand ? "edge node" : "device");
         }
     }
 

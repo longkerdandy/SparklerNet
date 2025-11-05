@@ -1,10 +1,10 @@
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
 using MQTTnet.Formatter;
 using MQTTnet.Protocol;
+using SparklerNet.Core.Constants;
 using SparklerNet.Core.Events;
 using SparklerNet.Core.Extensions;
 using SparklerNet.Core.Model;
@@ -25,7 +25,7 @@ namespace SparklerNet.HostApplication;
 ///     to outputs of Sparkplug Edge Nodes and/or Devices. Sparkplug Host Applications may also send
 ///     rebirth requests to Edge Nodes when required.
 /// </summary>
-public partial class SparkplugHostApplication
+public class SparkplugHostApplication
 {
     private readonly SparkplugMessageEvents _events = new();
     private readonly ILogger<SparkplugHostApplication> _logger;
@@ -41,10 +41,9 @@ public partial class SparkplugHostApplication
     public SparkplugHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions,
         ILogger<SparkplugHostApplication> logger)
     {
-        // Validate HostApplicationId does not contain reserved characters: +, /, #
-        if (HostApplicationIdRegex().IsMatch(sparkplugOptions.HostApplicationId))
-            throw new ArgumentException("HostApplicationId cannot contain reserved characters +, / or #.",
-                nameof(sparkplugOptions));
+        // Validate HostApplicationId
+        SparkplugNamespace.ValidateNamespaceElement(sparkplugOptions.HostApplicationId,
+            nameof(sparkplugOptions.HostApplicationId));
 
         _mqttOptions = mqttOptions;
         _sparkplugOptions = sparkplugOptions;
@@ -61,9 +60,6 @@ public partial class SparkplugHostApplication
 
     // MQTT Client
     public IMqttClient MqttClient { get; }
-
-    [GeneratedRegex(@"[+/#]", RegexOptions.Compiled)]
-    private static partial Regex HostApplicationIdRegex();
 
     public event Func<EdgeNodeMessageEventArgs, Task> EdgeNodeBirthReceivedAsync
     {
@@ -289,7 +285,10 @@ public partial class SparkplugHostApplication
     public async Task<MqttClientPublishResult> PublishEdgeNodeCommandMessageAsync(string groupId, string edgeNodeId,
         Payload payload)
     {
-        // TODO: Validate the group ID and edge node ID and the payload.
+        // Validate the group ID, edge node ID and the payload.
+        SparkplugNamespace.ValidateNamespaceElement(groupId, nameof(groupId));
+        SparkplugNamespace.ValidateNamespaceElement(edgeNodeId, nameof(edgeNodeId));
+        ArgumentNullException.ThrowIfNull(payload);
 
         // NCMD messages MUST be published with MQTT QoS equal to 0 and retain equal to false.
         var ncmdMessage = new MqttApplicationMessageBuilder()
@@ -314,7 +313,11 @@ public partial class SparkplugHostApplication
     public async Task<MqttClientPublishResult> PublishDeviceCommandMessageAsync(string groupId, string edgeNodeId,
         string deviceId, Payload payload)
     {
-        // TODO: Validate the group ID and edge node ID and the payload.
+        // Validate the group ID, edge node ID, device ID and the payload.
+        SparkplugNamespace.ValidateNamespaceElement(groupId, nameof(groupId));
+        SparkplugNamespace.ValidateNamespaceElement(edgeNodeId, nameof(edgeNodeId));
+        SparkplugNamespace.ValidateNamespaceElement(deviceId, nameof(deviceId));
+        ArgumentNullException.ThrowIfNull(payload);
 
         // DCMD messages MUST be published with MQTT QoS equal to 0 and retain equal to false.
         var dcmdMessage = new MqttApplicationMessageBuilder()

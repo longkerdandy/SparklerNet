@@ -27,7 +27,7 @@ The library aims to fully implement the complete Sparkplug protocol, with planne
 - .NET 9.0 SDK or later
 - MQTT protocol-compatible message broker (e.g., Mosquitto, HiveMQ)
 
-## Roadmap - Release v1.0.0
+## Roadmap - Release v1.0
 
 ### Core Functionality
 
@@ -40,7 +40,7 @@ The library aims to fully implement the complete Sparkplug protocol, with planne
 
 - ✅ Sparkplug-compliant Will message
 - ✅ STATE message publishing (Birth/Death certificates)
-- ✅ Deafult wildcard topic support (spBv1.0/#)
+- ✅ Default wildcard topic support (spBv1.0/#)
 - ✅ Specific group and edge node subscription support
 - ⬜ Sparkplug Host Application Message Ordering
 - ⬜ Mapping between Metric's name and alias
@@ -65,8 +65,8 @@ The library aims to fully implement the complete Sparkplug protocol, with planne
 
 ### Message Validation
 
-- ⬜ Payload validation for all message types
-- ⬜ Group ID and Edge Node ID validation
+- ✅ Host Application ID validation
+- ✅ Group ID, Edge Node ID and Device ID validation
 
 ### Additional Features
 
@@ -85,7 +85,7 @@ Or reference it directly in your project:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="SparklerNet" Version="0.9.0" />
+  <PackageReference Include="SparklerNet" Version="0.9.*" />
 </ItemGroup>
 ```
 

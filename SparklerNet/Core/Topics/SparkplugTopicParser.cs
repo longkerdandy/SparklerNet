@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using SparklerNet.Core.Constants;
 
 namespace SparklerNet.Core.Topics;

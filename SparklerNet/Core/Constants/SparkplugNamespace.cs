@@ -1,4 +1,6 @@
-﻿namespace SparklerNet.Core.Constants;
+﻿using System.Text.RegularExpressions;
+
+namespace SparklerNet.Core.Constants;
 
 /// <summary>
 ///     The namespace element of the topic namespace is the root element that will define both the structure of the
@@ -7,9 +9,32 @@
 ///     second is for the Sparkplug payload definition B.
 ///     Only Sparkplug payload definition B is supported in SparklerNet.
 /// </summary>
-public static class SparkplugNamespace
+public static partial class SparkplugNamespace
 {
     private const string SparkplugBv1 = "spBv1.0";
+
+    // Regular expression to match reserved characters in namespace elements (+, /, #) and empty strings
+    [GeneratedRegex(@"^\s*$|[+/#]", RegexOptions.Compiled)]
+    public static partial Regex NamespaceElementRegex();
+
+    /// <summary>
+    ///     Validates a namespace element to ensure it does not contain reserved characters (+, /, #) or is empty/whitespace.
+    /// </summary>
+    /// <param name="element">The namespace element to validate.</param>
+    /// <param name="parameterName">The name of the parameter being validated.</param>
+    /// <exception cref="ArgumentNullException">Thrown when element is null.</exception>
+    /// <exception cref="ArgumentException">
+    ///     Thrown when element is invalid (empty, whitespace only, or contains reserved
+    ///     characters).
+    /// </exception>
+    public static void ValidateNamespaceElement(string element, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(element, parameterName);
+
+        if (NamespaceElementRegex().IsMatch(element))
+            throw new ArgumentException(
+                $"{parameterName} cannot be empty or contain reserved characters +, / or #.", parameterName);
+    }
 
     /// <summary>
     ///     Convert a <see cref="SparkplugVersion" /> to <see cref="SparkplugNamespace" />.
