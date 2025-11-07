@@ -1,0 +1,394 @@
+using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
+using Microsoft.Extensions.Caching.Memory;
+using SparklerNet.Core.Model;
+using SparklerNet.Core.Options;
+
+namespace SparklerNet.HostApplication.Caches;
+
+/// <summary>
+///     Service responsible for managing message ordering by caching and validating sequence numbers
+///     Ensures messages are processed in sequential order according to the Sparkplug specification
+/// </summary>
+public class MessageOrderingService : IMessageOrderingService
+{
+    private const string SequenceKeyPrefix = "sparkplug:seq:"; // Prefix for sequence number cache keys
+    private const string PendingKeyPrefix = "sparkplug:pending:"; // Prefix for pending messages cache keys
+    private const int SequenceNumberRange = 256; // Valid sequence number range (0-255) as defined in Sparkplug spec
+    private readonly IMemoryCache _cache; // In-memory cache for storing sequence states and pending messages
+    private readonly SparkplugClientOptions _options; // Configuration options for the service
+
+    // Fine-grained locks for thread-safe operations on specific devices
+    private readonly ConcurrentDictionary<string, object> _reorderLocks = new();
+
+    // Timer collection for handling message reordering timeouts
+    private readonly ConcurrentDictionary<string, Timer> _reorderTimers = new();
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="MessageOrderingService" />
+    /// </summary>
+    /// <param name="cache">The memory cache instance for storing sequence states and pending messages</param>
+    /// <param name="options">The Sparkplug client options containing reordering configuration</param>
+    public MessageOrderingService(IMemoryCache cache, SparkplugClientOptions options)
+    {
+        _cache = cache;
+        _options = options;
+    }
+
+    /// <summary>
+    ///     Gets or sets the delegate to be called when a Rebirth message needs to be sent due to detected message gaps
+    /// </summary>
+    public RebirthRequestCallback? OnRebirthRequested { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the delegate to be called when pending messages have been processed and are ready for consumption
+    /// </summary>
+    public PendingMessagesCallback? OnPendingMessages { get; set; }
+
+    /// <summary>
+    ///     Processes a message in the correct order, handling both continuous and non-continuous sequences
+    ///     Messages with continuous sequence numbers are processed immediately
+    ///     Messages with gaps in sequence are cached for later processing when the gap is filled
+    /// </summary>
+    /// <param name="context">The message context to process</param>
+    /// <returns>List of messages that can be processed (current message if continuous + any continuous pending messages)</returns>
+    public List<MessageContext> ProcessMessageOrder(MessageContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        var result = new List<MessageContext>();
+        // Validate sequence number is within allowed range
+        if (context.Payload.Seq is < 0 or >= SequenceNumberRange) return result;
+
+        // Use fine-grained lock to ensure thread safety for this specific device/node
+        lock (GetLockObject(null, context.GroupId, context.EdgeNodeId, context.DeviceId))
+        {
+            // Check if the sequence is continuous with the last processed message
+            if (UpdateSequenceNumber(context))
+            {
+                // If sequence is continuous, add the current message to results
+                result.Add(context);
+
+                // Get and process any now-continuous pending messages
+                var pendingMessages = GetPendingMessages(context.GroupId, context.EdgeNodeId, context.DeviceId,
+                    context.Payload.Seq);
+                if (pendingMessages.Count > 0) result.AddRange(pendingMessages);
+            }
+            else
+            {
+                // If sequence has a gap, cache the message for later processing
+                CachePendingMessage(context);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    ///     Clears the sequence cache and pending messages for a specific edge node or device
+    ///     Also cleans up any associated timer resources
+    /// </summary>
+    /// <param name="groupId">The group ID of the edge node</param>
+    /// <param name="edgeNodeId">The edge node ID</param>
+    /// <param name="deviceId">The device ID (optional)</param>
+    public void ClearMessageOrderCache(string groupId, string edgeNodeId, string? deviceId)
+    {
+        // Build all required cache keys
+        var seqKey = BuildCacheKey(SequenceKeyPrefix, groupId, edgeNodeId, deviceId);
+        var pendingKey = BuildCacheKey(PendingKeyPrefix, groupId, edgeNodeId, deviceId);
+        var timerKey = BuildCacheKey(null, groupId, edgeNodeId, deviceId);
+
+        // Use lock to ensure thread safety during cache and timer cleanup
+        lock (GetLockObject(null, groupId, edgeNodeId, deviceId))
+        {
+            // Remove cached items and dispose timer if it exists
+            _cache.Remove(seqKey);
+            _cache.Remove(pendingKey);
+            if (_reorderTimers.TryRemove(timerKey, out var timer))
+                timer.Dispose();
+        }
+    }
+
+    /// <summary>
+    ///     Handles message reordering timeout events, triggered when a gap in sequence numbers persists beyond the configured
+    ///     timeout
+    /// </summary>
+    /// <param name="state">The timer key that identifies the edge node/device combination</param>
+    // ReSharper disable once AsyncVoidMethod - Required for timer callback pattern
+    private async void OnReorderTimeout(object? state)
+    {
+        if (state is not string timerKey) return;
+
+        // Parse the timer key to extract groupId, edgeNodeId, and deviceId
+        // The timer key format is "groupId:edgeNodeId:deviceId" or "groupId:edgeNodeId"
+        var parts = timerKey.Split(':');
+        if (parts.Length < 2) return;
+        var groupId = parts[0];
+        var edgeNodeId = parts[1];
+        var deviceId = parts.Length > 2 ? parts[2] : null;
+
+        // If ProcessDisorderedMessages is enabled, process pending messages regardless of sequence
+        if (_options.ProcessDisorderedMessages)
+        {
+            List<MessageContext> pendingMessages;
+
+            // Use lock to ensure thread safety and prevent race conditions with concurrent message processing
+            lock (GetLockObject(null, groupId, edgeNodeId, deviceId))
+            {
+                // Always remove and dispose the timer to prevent duplicate callbacks
+                if (_reorderTimers.TryRemove(timerKey, out var timer)) timer.Dispose();
+
+                // Pass seq as -1 to indicate timeout scenario
+                pendingMessages = GetPendingMessages(groupId, edgeNodeId, deviceId, -1);
+            }
+
+            // Call the pending messages delegate outside the lock to avoid deadlocks with async operations
+            if (pendingMessages.Count > 0 && OnPendingMessages != null)
+                await OnPendingMessages.Invoke(pendingMessages);
+        }
+        else
+        {
+            // Even when not processing disordered messages, we still need to clean up the timer
+            lock (GetLockObject(null, groupId, edgeNodeId, deviceId))
+            {
+                // Always remove and dispose the timer to prevent duplicate callbacks
+                if (_reorderTimers.TryRemove(timerKey, out var timer)) timer.Dispose();
+            }
+        }
+
+        // Send rebirth request if configured and delegate is set
+        if (_options.SendRebirthWhenTimeout && OnRebirthRequested != null)
+            await OnRebirthRequested.Invoke(groupId, edgeNodeId, deviceId);
+    }
+
+    /// <summary>
+    ///     Builds a standardized cache key based on the provided prefix and identifiers
+    /// </summary>
+    /// <param name="prefix">The prefix to use for the key (can be null)</param>
+    /// <param name="groupId">The group ID part of the key</param>
+    /// <param name="edgeNodeId">The edge node ID part of the key</param>
+    /// <param name="deviceId">The device ID part of the key (optional)</param>
+    /// <returns>The constructed cache key in format "prefix:groupId:edgeNodeId:deviceId" or "prefix:groupId:edgeNodeId"</returns>
+    internal static string BuildCacheKey(string? prefix, string groupId, string edgeNodeId, string? deviceId)
+    {
+        var baseKey = !string.IsNullOrEmpty(deviceId)
+            ? $"{groupId}:{edgeNodeId}:{deviceId}"
+            : $"{groupId}:{edgeNodeId}";
+
+        return string.IsNullOrEmpty(prefix) ? baseKey : $"{prefix}{baseKey}";
+    }
+
+    /// <summary>
+    ///     Gets a lock object for the specified context from the reorder locks dictionary
+    ///     Ensures thread safety for operations on a specific device/node combination
+    /// </summary>
+    /// <param name="prefix">The prefix to use for the key (can be null)</param>
+    /// <param name="groupId">The group ID part of the key</param>
+    /// <param name="edgeNodeId">The edge node ID part of the key</param>
+    /// <param name="deviceId">The device ID part of the key (optional)</param>
+    /// <returns>The lock object for the specified context</returns>
+    private object GetLockObject(string? prefix, string groupId, string edgeNodeId, string? deviceId)
+    {
+        var key = BuildCacheKey(prefix, groupId, edgeNodeId, deviceId);
+        return _reorderLocks.GetOrAdd(key, _ => new object());
+    }
+
+    /// <summary>
+    ///     Updates the sequence number in the cache if it represents a continuous sequence
+    /// </summary>
+    /// <param name="context">The message context containing sequence information</param>
+    /// <returns>True if the sequence is continuous, false if there's a gap</returns>
+    private bool UpdateSequenceNumber(MessageContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        // Validate sequence number is within allowed range
+        if (context.Payload.Seq is < 0 or >= SequenceNumberRange) return false;
+
+        // Build cache key for the sequence number tracking
+        var cacheKey = BuildCacheKey(SequenceKeyPrefix, context.GroupId, context.EdgeNodeId, context.DeviceId);
+
+        // Check if the current sequence is continuous with the previously recorded sequence
+        if (_cache.TryGetValue(cacheKey, out int previousSeq))
+        {
+            // Calculate next expected sequence number with wrap-around
+            var expectedNextSeq = (previousSeq + 1) % SequenceNumberRange;
+            // If current sequence doesn't match expected, there's a gap
+            if (context.Payload.Seq != expectedNextSeq) return false;
+        }
+
+        // Update the cache with the current sequence number
+        _cache.Set(cacheKey, context.Payload.Seq, CreateSequenceCacheEntryOptions());
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Caches a pending message that arrived out of order for later processing
+    /// </summary>
+    /// <param name="context">The message context containing sequence number and message data</param>
+    private void CachePendingMessage(MessageContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        // Validate sequence number is within allowed range
+        if (context.Payload.Seq is < 0 or >= SequenceNumberRange) return;
+
+        // Build cache key for pending messages
+        var pendingKey = BuildCacheKey(PendingKeyPrefix, context.GroupId, context.EdgeNodeId, context.DeviceId);
+
+        // Get existing pending messages or create a new sorted collection with circular sequence ordering
+        var pendingMessages =
+            _cache.TryGetValue(pendingKey, out SortedDictionary<int, MessageContext>? existingMessages)
+                ? existingMessages ?? new SortedDictionary<int, MessageContext>(new CircularSequenceComparer())
+                : new SortedDictionary<int, MessageContext>(new CircularSequenceComparer());
+
+        // Add or update message with this sequence number
+        pendingMessages[context.Payload.Seq] = context;
+
+        // Cache the updated pending messages
+        _cache.Set(pendingKey, pendingMessages);
+
+        // Build timer key for managing reordering timeout
+        var timerKey = BuildCacheKey(null, context.GroupId, context.EdgeNodeId, context.DeviceId);
+
+        // Check if the new message becomes the first message in the sorted collection
+        var isFirstMessage = pendingMessages.First().Key == context.Payload.Seq;
+
+        if (isFirstMessage)
+            // If this is now the first message, reset the timeout timer
+            _reorderTimers.AddOrUpdate(timerKey,
+                _ => new Timer(OnReorderTimeout, timerKey, _options.SeqReorderTimeout, Timeout.Infinite),
+                (_, existingTimer) =>
+                {
+                    existingTimer.Change(_options.SeqReorderTimeout, Timeout.Infinite);
+                    return existingTimer;
+                });
+        else
+            // Safety check: ensure we have a timer even if the new message is not the first one
+            // This prevents pending messages from being stuck if timer was lost due to concurrent operations
+            _reorderTimers.TryAdd(timerKey,
+                new Timer(OnReorderTimeout, timerKey, _options.SeqReorderTimeout, Timeout.Infinite));
+    }
+
+    /// <summary>
+    ///     Gets and processes any pending messages that now have a continuous sequence
+    ///     When seq is -1 (timeout scenario), still processes consecutive message sequences in order
+    /// </summary>
+    /// <param name="groupId">The group ID</param>
+    /// <param name="edgeNodeId">The edge node ID</param>
+    /// <param name="deviceId">The device ID (optional)</param>
+    /// <param name="seq">
+    ///     The current sequence number, -1 for reorder timeout scenario (still processes consecutive sequences in order)
+    /// </param>
+    /// <returns>List of pending messages that can now be processed in order</returns>
+    [SuppressMessage("ReSharper", "InvertIf")]
+    private List<MessageContext> GetPendingMessages(string groupId, string edgeNodeId, string? deviceId, int seq)
+    {
+        // Validate required parameters
+        if (string.IsNullOrEmpty(groupId)) throw new ArgumentNullException(nameof(groupId));
+        if (string.IsNullOrEmpty(edgeNodeId)) throw new ArgumentNullException(nameof(edgeNodeId));
+
+        var result = new List<MessageContext>();
+
+        // Build all required cache keys
+        var seqKey = BuildCacheKey(SequenceKeyPrefix, groupId, edgeNodeId, deviceId);
+        var pendingKey = BuildCacheKey(PendingKeyPrefix, groupId, edgeNodeId, deviceId);
+        var timerKey = BuildCacheKey(null, groupId, edgeNodeId, deviceId);
+
+        // Check if we have pending messages
+        if (!_cache.TryGetValue(pendingKey, out SortedDictionary<int, MessageContext>? pendingMessages) ||
+            pendingMessages == null || pendingMessages.Count == 0)
+            return result;
+
+        // Process pending messages in order until we find a gap
+        // When seq is -1 (timeout), we still process consecutive message sequences in order
+        var currentSeq = seq;
+        var nextExpectedSeq = currentSeq < 0 ? -1 : (currentSeq + 1) % SequenceNumberRange;
+        bool foundMoreMessages;
+
+        do
+        {
+            foundMoreMessages = false;
+            if (pendingMessages.Count > 0)
+            {
+                var firstKey = pendingMessages.Keys.First();
+
+                // Process if it's the expected next sequence or if we're in timeout mode (-1)
+                if (firstKey == nextExpectedSeq || nextExpectedSeq < 0)
+                {
+                    var messageContext = pendingMessages[firstKey];
+                    result.Add(messageContext);
+                    pendingMessages.Remove(firstKey);
+                    currentSeq = firstKey;
+                    nextExpectedSeq = (currentSeq + 1) % SequenceNumberRange;
+                    foundMoreMessages = true;
+                }
+            }
+        } while (foundMoreMessages && pendingMessages.Count > 0);
+
+        // Update cache with new current sequence after processing all continuous messages
+        _cache.Set(seqKey, currentSeq, CreateSequenceCacheEntryOptions());
+
+        // Update or remove pending messages cache and handle timer accordingly
+        // ReSharper disable once ConvertIfStatementToSwitchStatement
+        if (pendingMessages.Count > 0 && result.Count > 0)
+        {
+            // Still have pending messages and size changed, update cache and reset timer
+            _cache.Set(pendingKey, pendingMessages);
+            _reorderTimers.AddOrUpdate(timerKey,
+                _ => new Timer(OnReorderTimeout, timerKey, _options.SeqReorderTimeout, Timeout.Infinite),
+                (_, existingTimer) =>
+                {
+                    existingTimer.Change(_options.SeqReorderTimeout, Timeout.Infinite);
+                    return existingTimer;
+                });
+        }
+        else if (pendingMessages.Count == 0)
+        {
+            // No more pending messages, clean up cache and timer
+            _cache.Remove(pendingKey);
+            if (_reorderTimers.TryRemove(timerKey, out var timer))
+                timer.Dispose();
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    ///     Creates cache entry options for sequence number caching with appropriate expiration settings
+    /// </summary>
+    /// <returns>Configured MemoryCacheEntryOptions with sliding expiration if specified in options</returns>
+    private MemoryCacheEntryOptions CreateSequenceCacheEntryOptions()
+    {
+        var options = new MemoryCacheEntryOptions();
+        // Only set sliding expiration if explicitly configured with a positive value
+        if (_options.SeqCacheExpiration > 0)
+            options.SlidingExpiration = TimeSpan.FromMinutes(_options.SeqCacheExpiration);
+        return options;
+    }
+
+    /// <summary>
+    ///     Custom comparer for circular sequence numbers (0-255)
+    ///     Ensures proper ordering when sequence numbers wrap around (0 is considered greater than 255)
+    /// </summary>
+    internal class CircularSequenceComparer : IComparer<int>
+    {
+        /// <summary>
+        ///     Compares two circular sequence numbers considering the wrap-around at 255->0
+        /// </summary>
+        /// <param name="x">First sequence number to compare</param>
+        /// <param name="y">Second sequence number to compare</param>
+        /// <returns>Comparison result based on circular sequence rules</returns>
+        public int Compare(int x, int y)
+        {
+            // For circular sequence numbers (0-255), handle the wrap-around case
+            // If x is near 0 (lower third) and y is near 255 (upper third), consider x > y
+            // ReSharper disable once ConvertIfStatementToSwitchStatement
+            if (x < 32 && y > 223) return 1;
+            if (x > 223 && y < 32) return -1;
+
+            // Otherwise, use normal integer comparison
+            return x.CompareTo(y);
+        }
+    }
+}

@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
 using MQTTnet.Formatter;
@@ -32,7 +33,10 @@ public class SimpleHostApplication
     private SimpleHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions,
         ILogger<SparkplugHostApplication> logger, ILogger<SimpleHostApplication> simpleHostLogger)
     {
-        _hostApplication = new SparkplugHostApplication(mqttOptions, sparkplugOptions, logger);
+        // Create memory cache instance
+        var memoryCache = new MemoryCache(new MemoryCacheOptions());
+
+        _hostApplication = new SparkplugHostApplication(mqttOptions, sparkplugOptions, memoryCache, logger);
         _logger = simpleHostLogger;
         _isRunning = false;
     }
