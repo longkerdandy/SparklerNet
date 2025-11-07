@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Google.Protobuf;
 using Microsoft.Extensions.Caching.Memory;
@@ -31,9 +32,14 @@ namespace SparklerNet.HostApplication;
 public class SparkplugHostApplication
 {
     private readonly SparkplugMessageEvents _events = new();
+
     private readonly ILogger<SparkplugHostApplication> _logger;
+
     private readonly MqttClientOptions _mqttOptions;
-    private readonly MessageOrderingService _msgOrderingService;
+
+    [SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance")]
+    private readonly IMessageOrderingService _msgOrderingService;
+
     private readonly SparkplugClientOptions _sparkplugOptions;
 
     /// <summary>
@@ -53,7 +59,6 @@ public class SparkplugHostApplication
         _mqttOptions = mqttOptions;
         _sparkplugOptions = sparkplugOptions;
         _logger = logger;
-
         _msgOrderingService = new MessageOrderingService(memoryCache, _sparkplugOptions);
 
         // Create a new MQTT client.
@@ -75,7 +80,7 @@ public class SparkplugHostApplication
     public IMqttClient MqttClient { get; }
 
     /// <summary>
-    ///     Handles rebirth requests from MessageOrderingService
+    ///     Handles rebirth request callbacks from IMessageOrderingService
     /// </summary>
     /// <param name="groupId">The group ID of the entity requiring rebirth</param>
     /// <param name="edgeNodeId">The edge node ID of the entity requiring rebirth</param>
@@ -84,7 +89,7 @@ public class SparkplugHostApplication
     {
         try
         {
-            if (deviceId is not null) await this.SendDeviceRebirthCommandAsync(groupId, edgeNodeId, deviceId);
+            if (deviceId != null) await this.SendDeviceRebirthCommandAsync(groupId, edgeNodeId, deviceId);
             else await this.SendEdgeNodeRebirthCommandAsync(groupId, edgeNodeId);
         }
         catch (Exception ex)
@@ -96,11 +101,12 @@ public class SparkplugHostApplication
     }
 
     /// <summary>
-    ///     Handles pending messages processed during reorder timeout when ProcessDisorderedMessages is enabled
-    ///     Using async method directly instead of Task.Run to avoid unnecessary thread pool scheduling
+    ///     Processes data messages (NDATA and DDATA) and invokes the appropriate event.
+    ///     When the ProcessDisorderedMessages option is enabled, pending messages will be processed in the order they were
+    ///     received.
     /// </summary>
-    /// <param name="messageContexts">The collection of pending messages to process.</param>
-    private async Task HandlePendingMessages(IEnumerable<MessageContext> messageContexts)
+    /// <param name="messageContexts">The collection of NDATA and DDATA messages to process.</param>
+    private async Task HandlePendingMessages(IEnumerable<SparkplugMessageEventArgs> messageContexts)
     {
         foreach (var messageContext in messageContexts)
             try
@@ -108,14 +114,8 @@ public class SparkplugHostApplication
                 // Raise the message received event.
                 await (messageContext.MessageType switch
                 {
-                    NDATA => _events.EdgeNodeDataReceivedEvent.InvokeAsync(
-                        new EdgeNodeMessageEventArgs(messageContext.Version, messageContext.MessageType,
-                            messageContext.GroupId, messageContext.EdgeNodeId, messageContext.Payload,
-                            messageContext.EventArgs)),
-                    DDATA => _events.DeviceDataReceivedEvent.InvokeAsync(new DeviceMessageEventArgs(
-                        messageContext.Version, messageContext.MessageType, messageContext.GroupId,
-                        messageContext.EdgeNodeId, messageContext.DeviceId!, messageContext.Payload,
-                        messageContext.EventArgs)),
+                    NDATA => _events.EdgeNodeDataReceivedEvent.InvokeAsync(messageContext),
+                    DDATA => _events.DeviceDataReceivedEvent.InvokeAsync(messageContext),
                     _ => Task.CompletedTask // Other message types are ignored
                 });
             }
@@ -237,9 +237,11 @@ public class SparkplugHostApplication
 
     /// <summary>
     ///     Subscribe to the MQTT topics based on the 'Subscriptions' option.
-    ///     By default, the Sparkplug Host Application will subscribe to Sparkplug wildcard topic (e.g., spBv1.0/#) and the Host
+    ///     By default, the Sparkplug Host Application will subscribe to Sparkplug wildcard topic (e.g., spBv1.0/#) and the
+    ///     Host
     ///     Application self's STATE topic (e.g., spBv1.0/STATE/sparkplug_host_id).
-    ///     However, it may also make sense for a Host Application to subscribe only to a specific Sparkplug Group. For example,
+    ///     However, it may also make sense for a Host Application to subscribe only to a specific Sparkplug Group. For
+    ///     example,
     ///     subscribing to 'spBv1.0/Group1/' is also valid. A Host Application could even issue a subscription to subscribe to
     ///     only a single Sparkplug Edge Node using this: 'spBv1.0/Group1/+/EdgeNode1/#'. A Sparkplug Host Application could
     ///     subscribe to a combination of specific Sparkplug Groups and/or Edge Nodes as well.
@@ -400,8 +402,7 @@ public class SparkplugHostApplication
                 try
                 {
                     await _events.StateReceivedEvent.InvokeAsync(
-                        new HostApplicationMessageEventArgs(version, messageType, hostId!, statePayload,
-                            eventArgs));
+                        new HostApplicationMessageEventArgs(version, messageType, hostId!, statePayload, eventArgs));
                 }
                 catch (Exception ex)
                 {
@@ -415,13 +416,14 @@ public class SparkplugHostApplication
             var protoPayload = ProtoPayload.Parser.ParseFrom(eventArgs.ApplicationMessage.Payload);
             var payload = protoPayload.ToPayload();
 
+            var messageContext = new SparkplugMessageEventArgs(version, messageType, groupId!, edgeNodeId!, deviceId,
+                payload, eventArgs);
+
             // Process messages based on the message type
             await (messageType switch
             {
-                NDATA or DDATA => ProcessDataMessagesAsync(version, messageType, groupId!, edgeNodeId!, deviceId,
-                    payload, eventArgs),
-                NBIRTH or DBIRTH or NDEATH or DDEATH => ProcessBirthDeathMessagesAsync(version, messageType, groupId!,
-                    edgeNodeId!, deviceId, payload, eventArgs),
+                NDATA or DDATA => ProcessDataMessagesAsync(messageContext),
+                NBIRTH or DBIRTH or NDEATH or DDEATH => ProcessBirthDeathMessagesAsync(messageContext),
                 NCMD or DCMD => Task.CompletedTask, // Ignore command messages
                 _ => throw new NotSupportedException(
                     $"Not supported Sparkplug message type {messageType} for Host Application.")
@@ -450,31 +452,14 @@ public class SparkplugHostApplication
     ///     If missing messages arrive before the timeout, normal operation continues. This implementation will
     ///     be updated to fully comply with the Sparkplug specification as documented in MessageOrdering.md.
     /// </summary>
-    /// <param name="version">The Sparkplug version of the message.</param>
-    /// <param name="messageType">The Sparkplug message type (NDATA or DDATA).</param>
-    /// <param name="groupId">The Sparkplug group ID.</param>
-    /// <param name="edgeNodeId">The Sparkplug edge node ID.</param>
-    /// <param name="deviceId">The Sparkplug device ID (optional for edge nodes).</param>
-    /// <param name="payload">The payload of the message.</param>
-    /// <param name="eventArgs">The MQTT application message received event arguments.</param>
+    /// <param name="messageContext">The message context containing all necessary information.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    private async Task ProcessDataMessagesAsync(SparkplugVersion version, SparkplugMessageType messageType,
-        string groupId, string edgeNodeId, string? deviceId, Payload payload,
-        MqttApplicationMessageReceivedEventArgs eventArgs)
+    private async Task ProcessDataMessagesAsync(SparkplugMessageEventArgs messageContext)
     {
-        var messageContext = new MessageContext
-        {
-            Version = version,
-            MessageType = messageType,
-            GroupId = groupId,
-            EdgeNodeId = edgeNodeId,
-            DeviceId = deviceId,
-            Payload = payload,
-            EventArgs = eventArgs
-        };
-
-        // Process message order and get all messages that can be processed
-        var messages = _msgOrderingService.ProcessMessageOrder(messageContext);
+        // Initialize the pending messages based on the message ordering configuration
+        var messages = _sparkplugOptions.EnableMessageOrdering
+            ? _msgOrderingService.ProcessMessageOrder(messageContext)
+            : [messageContext];
 
         // Process all messages in order
         await HandlePendingMessages(messages);
@@ -486,36 +471,24 @@ public class SparkplugHostApplication
     ///     NDEATH and DDEATH messages do not carry a sequence number. In practice, to ensure better compatibility, we
     ///     uniformly clear the caches when receiving BIRTH and DEATH messages.
     /// </summary>
-    /// <param name="version">The Sparkplug version of the message.</param>
-    /// <param name="messageType">The Sparkplug message type (NBIRTH, NDEATH, DBIRTH, DDEATH).</param>
-    /// <param name="groupId">The Sparkplug group ID.</param>
-    /// <param name="edgeNodeId">The Sparkplug edge node ID.</param>
-    /// <param name="deviceId">The Sparkplug device ID (optional for edge nodes).</param>
-    /// <param name="payload">The payload of the message.</param>
-    /// <param name="eventArgs">The MQTT application message received event arguments.</param>
+    /// <param name="messageContext">The message context containing all necessary information.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    private async Task ProcessBirthDeathMessagesAsync(SparkplugVersion version, SparkplugMessageType messageType,
-        string groupId, string edgeNodeId, string? deviceId, Payload payload,
-        MqttApplicationMessageReceivedEventArgs eventArgs)
+    private async Task ProcessBirthDeathMessagesAsync(SparkplugMessageEventArgs messageContext)
     {
-        // Clear message order cache for the edge node or device
-        _msgOrderingService.ClearMessageOrderCache(groupId, edgeNodeId, deviceId);
+        if (_sparkplugOptions.EnableMessageOrdering)
+            // Clear message order cache for the edge node or device
+            _msgOrderingService.ClearMessageOrderCache(messageContext.GroupId, messageContext.EdgeNodeId,
+                messageContext.DeviceId);
 
         try
         {
-           // Raise the appropriate event
-            await (messageType switch
+            // Raise the appropriate event
+            await (messageContext.MessageType switch
             {
-                NBIRTH => _events.EdgeNodeBirthReceivedEvent.InvokeAsync(
-                    new EdgeNodeMessageEventArgs(version, messageType, groupId, edgeNodeId, payload, eventArgs)),
-                NDEATH => _events.EdgeNodeDeathReceivedEvent.InvokeAsync(
-                    new EdgeNodeMessageEventArgs(version, messageType, groupId, edgeNodeId, payload, eventArgs)),
-                DBIRTH => _events.DeviceBirthReceivedEvent.InvokeAsync(
-                    new DeviceMessageEventArgs(version, messageType, groupId, edgeNodeId, deviceId!, payload,
-                        eventArgs)),
-                DDEATH => _events.DeviceDeathReceivedEvent.InvokeAsync(
-                    new DeviceMessageEventArgs(version, messageType, groupId, edgeNodeId, deviceId!, payload,
-                        eventArgs)),
+                NBIRTH => _events.EdgeNodeBirthReceivedEvent.InvokeAsync(messageContext),
+                NDEATH => _events.EdgeNodeDeathReceivedEvent.InvokeAsync(messageContext),
+                DBIRTH => _events.DeviceBirthReceivedEvent.InvokeAsync(messageContext),
+                DDEATH => _events.DeviceDeathReceivedEvent.InvokeAsync(messageContext),
                 _ => Task.CompletedTask // This case should never be reached due to the method's caller check
             });
         }
@@ -523,7 +496,7 @@ public class SparkplugHostApplication
         {
             _logger.LogWarning(ex,
                 "Exception occurred while handling message received event. GroupId: {GroupId}, EdgeNodeId: {EdgeNodeId}, DeviceId: {DeviceId}",
-                groupId, edgeNodeId, deviceId);
+                messageContext.GroupId, messageContext.EdgeNodeId, messageContext.DeviceId);
         }
     }
 
@@ -540,7 +513,7 @@ public class SparkplugHostApplication
         else
         {
             _logger.LogInformation("MQTT client disconnected unexpectedly with reason {Reason}", eventArgs.Reason);
-            
+
             try
             {
                 // Raise the DisconnectedReceived event
@@ -555,37 +528,37 @@ public class SparkplugHostApplication
 
     #region Events
 
-    public event Func<EdgeNodeMessageEventArgs, Task> EdgeNodeBirthReceivedAsync
+    public event Func<SparkplugMessageEventArgs, Task> EdgeNodeBirthReceivedAsync
     {
         add => _events.EdgeNodeBirthReceivedEvent.AddHandler(value);
         remove => _events.EdgeNodeBirthReceivedEvent.RemoveHandler(value);
     }
 
-    public event Func<EdgeNodeMessageEventArgs, Task> EdgeNodeDeathReceivedAsync
+    public event Func<SparkplugMessageEventArgs, Task> EdgeNodeDeathReceivedAsync
     {
         add => _events.EdgeNodeDeathReceivedEvent.AddHandler(value);
         remove => _events.EdgeNodeDeathReceivedEvent.RemoveHandler(value);
     }
 
-    public event Func<EdgeNodeMessageEventArgs, Task> EdgeNodeDataReceivedAsync
+    public event Func<SparkplugMessageEventArgs, Task> EdgeNodeDataReceivedAsync
     {
         add => _events.EdgeNodeDataReceivedEvent.AddHandler(value);
         remove => _events.EdgeNodeDataReceivedEvent.RemoveHandler(value);
     }
 
-    public event Func<DeviceMessageEventArgs, Task> DeviceBirthReceivedAsync
+    public event Func<SparkplugMessageEventArgs, Task> DeviceBirthReceivedAsync
     {
         add => _events.DeviceBirthReceivedEvent.AddHandler(value);
         remove => _events.DeviceBirthReceivedEvent.RemoveHandler(value);
     }
 
-    public event Func<DeviceMessageEventArgs, Task> DeviceDeathReceivedAsync
+    public event Func<SparkplugMessageEventArgs, Task> DeviceDeathReceivedAsync
     {
         add => _events.DeviceDeathReceivedEvent.AddHandler(value);
         remove => _events.DeviceDeathReceivedEvent.RemoveHandler(value);
     }
 
-    public event Func<DeviceMessageEventArgs, Task> DeviceDataReceivedAsync
+    public event Func<SparkplugMessageEventArgs, Task> DeviceDataReceivedAsync
     {
         add => _events.DeviceDataReceivedEvent.AddHandler(value);
         remove => _events.DeviceDataReceivedEvent.RemoveHandler(value);

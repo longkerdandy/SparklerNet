@@ -1,4 +1,4 @@
-using SparklerNet.Core.Model;
+using SparklerNet.Core.Events;
 
 namespace SparklerNet.HostApplication.Caches;
 
@@ -14,11 +14,11 @@ public delegate Task RebirthRequestCallback(string groupId, string edgeNodeId, s
 ///     Delegate for notifying when pending messages have been processed and are ready for consumption
 /// </summary>
 /// <param name="messageContexts">The collection of pending messages that are now ready for processing</param>
-public delegate Task PendingMessagesCallback(IEnumerable<MessageContext> messageContexts);
+public delegate Task PendingMessagesCallback(IEnumerable<SparkplugMessageEventArgs> messageContexts);
 
 /// <summary>
-///     Interface for a service responsible for managing message ordering by caching and validating sequence numbers
-///     Ensures messages are processed in sequential order according to the Sparkplug specification
+///     Interface for a service responsible for managing message ordering by caching and validating sequence numbers.
+///     Ensures messages are processed in sequential order according to the Sparkplug specification.
 /// </summary>
 public interface IMessageOrderingService
 {
@@ -37,9 +37,9 @@ public interface IMessageOrderingService
     ///     Messages with continuous sequence numbers are processed immediately
     ///     Messages with gaps in sequence are cached for later processing when the gap is filled
     /// </summary>
-    /// <param name="context">The message context to process</param>
-    /// <returns>List of messages that can be processed (current message if continuous + any continuous pending messages)</returns>
-    List<MessageContext> ProcessMessageOrder(MessageContext context);
+    /// <param name="messageContext">The message context to process</param>
+    /// <returns>List of messages that can be processed (current message if continuous and any continuous pending messages)</returns>
+    List<SparkplugMessageEventArgs> ProcessMessageOrder(SparkplugMessageEventArgs messageContext);
 
     /// <summary>
     ///     Clears the sequence cache and pending messages for a specific edge node or device

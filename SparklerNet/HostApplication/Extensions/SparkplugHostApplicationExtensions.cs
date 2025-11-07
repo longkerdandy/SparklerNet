@@ -17,9 +17,7 @@ public static class SparkplugHostApplicationExtensions
     /// <param name="edgeNodeId">The Sparkplug Edge Node ID</param>
     /// <returns>The MQTT Client Publish Result</returns>
     public static Task<MqttClientPublishResult> SendEdgeNodeRebirthCommandAsync(
-        this SparkplugHostApplication hostApplication,
-        string groupId,
-        string edgeNodeId)
+        this SparkplugHostApplication hostApplication, string groupId, string edgeNodeId)
     {
         ArgumentNullException.ThrowIfNull(hostApplication);
         SparkplugNamespace.ValidateNamespaceElement(groupId, nameof(groupId));
@@ -38,10 +36,7 @@ public static class SparkplugHostApplicationExtensions
     /// <param name="deviceId">The Sparkplug Device ID</param>
     /// <returns>The MQTT Client Publish Result</returns>
     public static Task<MqttClientPublishResult> SendDeviceRebirthCommandAsync(
-        this SparkplugHostApplication hostApplication,
-        string groupId,
-        string edgeNodeId,
-        string deviceId)
+        this SparkplugHostApplication hostApplication, string groupId, string edgeNodeId, string deviceId)
     {
         ArgumentNullException.ThrowIfNull(hostApplication);
         SparkplugNamespace.ValidateNamespaceElement(groupId, nameof(groupId));

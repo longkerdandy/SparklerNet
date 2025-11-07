@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Caching.Memory;
-using SparklerNet.Core.Model;
+using SparklerNet.Core.Events;
 using SparklerNet.Core.Options;
 
 namespace SparklerNet.HostApplication.Caches;
@@ -12,8 +12,8 @@ namespace SparklerNet.HostApplication.Caches;
 /// </summary>
 public class MessageOrderingService : IMessageOrderingService
 {
-    private const string SequenceKeyPrefix = "sparkplug:seq:"; // Prefix for sequence number cache keys
-    private const string PendingKeyPrefix = "sparkplug:pending:"; // Prefix for pending messages cache keys
+    private const string SequenceKeyPrefix = "sparkplug:seq:"; // Prefix for the sequence number cache keys
+    private const string PendingKeyPrefix = "sparkplug:pending:"; // Prefix for the pending messages cache keys
     private const int SequenceNumberRange = 256; // Valid sequence number range (0-255) as defined in Sparkplug spec
     private readonly IMemoryCache _cache; // In-memory cache for storing sequence states and pending messages
     private readonly SparkplugClientOptions _options; // Configuration options for the service
@@ -50,34 +50,35 @@ public class MessageOrderingService : IMessageOrderingService
     ///     Messages with continuous sequence numbers are processed immediately
     ///     Messages with gaps in sequence are cached for later processing when the gap is filled
     /// </summary>
-    /// <param name="context">The message context to process</param>
-    /// <returns>List of messages that can be processed (current message if continuous + any continuous pending messages)</returns>
-    public List<MessageContext> ProcessMessageOrder(MessageContext context)
+    /// <param name="messageContext">The message context to process</param>
+    /// <returns>List of messages that can be processed (current message if continuous and any continuous pending messages)</returns>
+    public List<SparkplugMessageEventArgs> ProcessMessageOrder(SparkplugMessageEventArgs messageContext)
     {
-        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(messageContext);
 
-        var result = new List<MessageContext>();
-        // Validate sequence number is within allowed range
-        if (context.Payload.Seq is < 0 or >= SequenceNumberRange) return result;
+        var result = new List<SparkplugMessageEventArgs>();
+        // Validate sequence number is within the allowed range
+        if (messageContext.Payload.Seq is < 0 or >= SequenceNumberRange) return result;
 
         // Use fine-grained lock to ensure thread safety for this specific device/node
-        lock (GetLockObject(null, context.GroupId, context.EdgeNodeId, context.DeviceId))
+        lock (GetLockObject(null, messageContext.GroupId, messageContext.EdgeNodeId, messageContext.DeviceId))
         {
             // Check if the sequence is continuous with the last processed message
-            if (UpdateSequenceNumber(context))
+            if (UpdateSequenceNumber(messageContext))
             {
-                // If sequence is continuous, add the current message to results
-                result.Add(context);
+                // If the sequence is continuous, add the current message to results
+                result.Add(messageContext);
 
                 // Get and process any now-continuous pending messages
-                var pendingMessages = GetPendingMessages(context.GroupId, context.EdgeNodeId, context.DeviceId,
-                    context.Payload.Seq);
+                var pendingMessages = GetPendingMessages(messageContext.GroupId, messageContext.EdgeNodeId,
+                    messageContext.DeviceId,
+                    messageContext.Payload.Seq);
                 if (pendingMessages.Count > 0) result.AddRange(pendingMessages);
             }
             else
             {
-                // If sequence has a gap, cache the message for later processing
-                CachePendingMessage(context);
+                // If the sequence has a gap, cache the message for later processing
+                CachePendingMessage(messageContext);
             }
         }
 
@@ -127,10 +128,10 @@ public class MessageOrderingService : IMessageOrderingService
         var edgeNodeId = parts[1];
         var deviceId = parts.Length > 2 ? parts[2] : null;
 
-        // If ProcessDisorderedMessages is enabled, process pending messages regardless of sequence
+        // If ProcessDisorderedMessages is enabled, process the pending messages regardless of sequence
         if (_options.ProcessDisorderedMessages)
         {
-            List<MessageContext> pendingMessages;
+            List<SparkplugMessageEventArgs> pendingMessages;
 
             // Use lock to ensure thread safety and prevent race conditions with concurrent message processing
             lock (GetLockObject(null, groupId, edgeNodeId, deviceId))
@@ -156,7 +157,7 @@ public class MessageOrderingService : IMessageOrderingService
             }
         }
 
-        // Send rebirth request if configured and delegate is set
+        // Send the rebirth request if configured and delegate is set
         if (_options.SendRebirthWhenTimeout && OnRebirthRequested != null)
             await OnRebirthRequested.Invoke(groupId, edgeNodeId, deviceId);
     }
@@ -196,29 +197,30 @@ public class MessageOrderingService : IMessageOrderingService
     /// <summary>
     ///     Updates the sequence number in the cache if it represents a continuous sequence
     /// </summary>
-    /// <param name="context">The message context containing sequence information</param>
+    /// <param name="messageContext">The message context containing sequence information</param>
     /// <returns>True if the sequence is continuous, false if there's a gap</returns>
-    private bool UpdateSequenceNumber(MessageContext context)
+    private bool UpdateSequenceNumber(SparkplugMessageEventArgs messageContext)
     {
-        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(messageContext);
 
-        // Validate sequence number is within allowed range
-        if (context.Payload.Seq is < 0 or >= SequenceNumberRange) return false;
+        // Validate sequence number is within the allowed range
+        if (messageContext.Payload.Seq is < 0 or >= SequenceNumberRange) return false;
 
         // Build cache key for the sequence number tracking
-        var cacheKey = BuildCacheKey(SequenceKeyPrefix, context.GroupId, context.EdgeNodeId, context.DeviceId);
+        var cacheKey = BuildCacheKey(SequenceKeyPrefix, messageContext.GroupId, messageContext.EdgeNodeId,
+            messageContext.DeviceId);
 
         // Check if the current sequence is continuous with the previously recorded sequence
         if (_cache.TryGetValue(cacheKey, out int previousSeq))
         {
-            // Calculate next expected sequence number with wrap-around
+            // Calculate the next expected sequence number with wrap-around
             var expectedNextSeq = (previousSeq + 1) % SequenceNumberRange;
-            // If current sequence doesn't match expected, there's a gap
-            if (context.Payload.Seq != expectedNextSeq) return false;
+            // If the current sequence doesn't match expected, there's a gap
+            if (messageContext.Payload.Seq != expectedNextSeq) return false;
         }
 
         // Update the cache with the current sequence number
-        _cache.Set(cacheKey, context.Payload.Seq, CreateSequenceCacheEntryOptions());
+        _cache.Set(cacheKey, messageContext.Payload.Seq, CreateSequenceCacheEntryOptions());
 
         return true;
     }
@@ -226,33 +228,35 @@ public class MessageOrderingService : IMessageOrderingService
     /// <summary>
     ///     Caches a pending message that arrived out of order for later processing
     /// </summary>
-    /// <param name="context">The message context containing sequence number and message data</param>
-    private void CachePendingMessage(MessageContext context)
+    /// <param name="messageContext">The message context containing sequence number and message data</param>
+    private void CachePendingMessage(SparkplugMessageEventArgs messageContext)
     {
-        ArgumentNullException.ThrowIfNull(context);
-        // Validate sequence number is within allowed range
-        if (context.Payload.Seq is < 0 or >= SequenceNumberRange) return;
+        ArgumentNullException.ThrowIfNull(messageContext);
+        // Validate sequence number is within the allowed range
+        if (messageContext.Payload.Seq is < 0 or >= SequenceNumberRange) return;
 
         // Build cache key for pending messages
-        var pendingKey = BuildCacheKey(PendingKeyPrefix, context.GroupId, context.EdgeNodeId, context.DeviceId);
+        var pendingKey = BuildCacheKey(PendingKeyPrefix, messageContext.GroupId, messageContext.EdgeNodeId,
+            messageContext.DeviceId);
 
         // Get existing pending messages or create a new sorted collection with circular sequence ordering
         var pendingMessages =
-            _cache.TryGetValue(pendingKey, out SortedDictionary<int, MessageContext>? existingMessages)
-                ? existingMessages ?? new SortedDictionary<int, MessageContext>(new CircularSequenceComparer())
-                : new SortedDictionary<int, MessageContext>(new CircularSequenceComparer());
+            _cache.TryGetValue(pendingKey, out SortedDictionary<int, SparkplugMessageEventArgs>? existingMessages)
+                ? existingMessages ??
+                  new SortedDictionary<int, SparkplugMessageEventArgs>(new CircularSequenceComparer())
+                : new SortedDictionary<int, SparkplugMessageEventArgs>(new CircularSequenceComparer());
 
-        // Add or update message with this sequence number
-        pendingMessages[context.Payload.Seq] = context;
+        // Add or update the message with this sequence number
+        pendingMessages[messageContext.Payload.Seq] = messageContext;
 
         // Cache the updated pending messages
         _cache.Set(pendingKey, pendingMessages);
 
         // Build timer key for managing reordering timeout
-        var timerKey = BuildCacheKey(null, context.GroupId, context.EdgeNodeId, context.DeviceId);
+        var timerKey = BuildCacheKey(null, messageContext.GroupId, messageContext.EdgeNodeId, messageContext.DeviceId);
 
         // Check if the new message becomes the first message in the sorted collection
-        var isFirstMessage = pendingMessages.First().Key == context.Payload.Seq;
+        var isFirstMessage = pendingMessages.First().Key == messageContext.Payload.Seq;
 
         if (isFirstMessage)
             // If this is now the first message, reset the timeout timer
@@ -265,7 +269,7 @@ public class MessageOrderingService : IMessageOrderingService
                 });
         else
             // Safety check: ensure we have a timer even if the new message is not the first one
-            // This prevents pending messages from being stuck if timer was lost due to concurrent operations
+            // This prevents pending messages from being stuck if the timer was lost due to concurrent operations
             _reorderTimers.TryAdd(timerKey,
                 new Timer(OnReorderTimeout, timerKey, _options.SeqReorderTimeout, Timeout.Infinite));
     }
@@ -278,17 +282,18 @@ public class MessageOrderingService : IMessageOrderingService
     /// <param name="edgeNodeId">The edge node ID</param>
     /// <param name="deviceId">The device ID (optional)</param>
     /// <param name="seq">
-    ///     The current sequence number, -1 for reorder timeout scenario (still processes consecutive sequences in order)
+    ///     The current sequence number, -1 for the reorder timeout scenario (still processes consecutive sequences in order)
     /// </param>
     /// <returns>List of pending messages that can now be processed in order</returns>
     [SuppressMessage("ReSharper", "InvertIf")]
-    private List<MessageContext> GetPendingMessages(string groupId, string edgeNodeId, string? deviceId, int seq)
+    private List<SparkplugMessageEventArgs> GetPendingMessages(string groupId, string edgeNodeId, string? deviceId,
+        int seq)
     {
         // Validate required parameters
         if (string.IsNullOrEmpty(groupId)) throw new ArgumentNullException(nameof(groupId));
         if (string.IsNullOrEmpty(edgeNodeId)) throw new ArgumentNullException(nameof(edgeNodeId));
 
-        var result = new List<MessageContext>();
+        var result = new List<SparkplugMessageEventArgs>();
 
         // Build all required cache keys
         var seqKey = BuildCacheKey(SequenceKeyPrefix, groupId, edgeNodeId, deviceId);
@@ -296,7 +301,7 @@ public class MessageOrderingService : IMessageOrderingService
         var timerKey = BuildCacheKey(null, groupId, edgeNodeId, deviceId);
 
         // Check if we have pending messages
-        if (!_cache.TryGetValue(pendingKey, out SortedDictionary<int, MessageContext>? pendingMessages) ||
+        if (!_cache.TryGetValue(pendingKey, out SortedDictionary<int, SparkplugMessageEventArgs>? pendingMessages) ||
             pendingMessages == null || pendingMessages.Count == 0)
             return result;
 
@@ -326,7 +331,7 @@ public class MessageOrderingService : IMessageOrderingService
             }
         } while (foundMoreMessages && pendingMessages.Count > 0);
 
-        // Update cache with new current sequence after processing all continuous messages
+        // Update the cache with the new sequence after processing all continuous messages
         _cache.Set(seqKey, currentSeq, CreateSequenceCacheEntryOptions());
 
         // Update or remove pending messages cache and handle timer accordingly

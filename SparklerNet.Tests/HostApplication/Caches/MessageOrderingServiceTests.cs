@@ -2,6 +2,7 @@ using System.Dynamic;
 using System.Reflection;
 using Microsoft.Extensions.Caching.Memory;
 using SparklerNet.Core.Constants;
+using SparklerNet.Core.Events;
 using SparklerNet.Core.Model;
 using SparklerNet.Core.Options;
 using SparklerNet.HostApplication.Caches;
@@ -149,7 +150,7 @@ public class MessageOrderingServiceTests
     [Fact]
     public async Task OnReorderTimeout_ShouldProcessPendingMessages_WhenProcessDisorderedMessagesEnabled()
     {
-        List<MessageContext>? processedMessages = null;
+        List<SparkplugMessageEventArgs>? processedMessages = null;
         _service.OnPendingMessages = messages =>
         {
             processedMessages = [.. messages];
@@ -199,7 +200,7 @@ public class MessageOrderingServiceTests
         Assert.Equal("Device1", actualDeviceId);
     }
 
-    private static MessageContext CreateMessageContext(int sequenceNumber)
+    private static SparkplugMessageEventArgs CreateMessageContext(int sequenceNumber)
     {
         // Create payload with specified sequence number
         var payload = new Payload();
@@ -208,7 +209,7 @@ public class MessageOrderingServiceTests
 
         // Create MessageContext using reflection to bypass constructor requirements
         // Reflection is needed because MqttApplicationMessageReceivedEventArgs is difficult to create in tests
-        var messageContext = (MessageContext)Activator.CreateInstance(typeof(MessageContext), true)!;
+        var messageContext = (SparkplugMessageEventArgs)Activator.CreateInstance(typeof(SparkplugMessageEventArgs), true)!;
 
         // Set required properties
 

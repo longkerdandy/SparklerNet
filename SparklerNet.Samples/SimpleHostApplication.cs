@@ -10,6 +10,7 @@ using SparklerNet.Core.Events;
 using SparklerNet.Core.Model;
 using SparklerNet.Core.Options;
 using SparklerNet.HostApplication;
+using SparklerNet.HostApplication.Extensions;
 using static SparklerNet.Core.Constants.SparkplugMessageType;
 
 namespace SparklerNet.Samples;
@@ -33,9 +34,7 @@ public class SimpleHostApplication
     private SimpleHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions,
         ILogger<SparkplugHostApplication> logger, ILogger<SimpleHostApplication> simpleHostLogger)
     {
-        // Create memory cache instance
         var memoryCache = new MemoryCache(new MemoryCacheOptions());
-
         _hostApplication = new SparkplugHostApplication(mqttOptions, sparkplugOptions, memoryCache, logger);
         _logger = simpleHostLogger;
         _isRunning = false;
@@ -81,15 +80,18 @@ public class SimpleHostApplication
 
             // Create MQTT client options
             var mqttOptions = new MqttClientOptionsBuilder()
-                .WithTcpServer("127.0.0.1", 1883)
+                .WithTcpServer("BROKER.HIVEMQ.COM", 1883)
                 .WithProtocolVersion(MqttProtocolVersion.V311)
                 .Build();
 
             // Create Sparkplug client options
             var sparkplugOptions = new SparkplugClientOptions
             {
-                HostApplicationId = "SampleHostApp",
-                Version = SparkplugVersion.V300
+                Version = SparkplugVersion.V300,
+                HostApplicationId = "SparklerNetSimpleHostApp",
+                Subscriptions =
+                    [new MqttTopicFilterBuilder().WithTopic("spBv1.0/MIMIC/#").WithAtLeastOnceQoS().Build()],
+                EnableMessageOrdering = true
             };
 
             // Create a Simple Host Application instance
@@ -158,7 +160,7 @@ public class SimpleHostApplication
         return Task.CompletedTask;
     }
 
-    private Task HandleEdgeNodeMessage(SparkplugMessageType messageType, EdgeNodeMessageEventArgs args)
+    private Task HandleEdgeNodeMessage(SparkplugMessageType messageType, SparkplugMessageEventArgs args)
     {
         _logger.LogInformation("Received {MessageType} message from Group={Group}, Node={Node}",
             messageType, args.GroupId, args.EdgeNodeId);
@@ -166,7 +168,7 @@ public class SimpleHostApplication
         return Task.CompletedTask;
     }
 
-    private Task HandleDeviceMessage(SparkplugMessageType messageType, DeviceMessageEventArgs args)
+    private Task HandleDeviceMessage(SparkplugMessageType messageType, SparkplugMessageEventArgs args)
     {
         _logger.LogInformation("Received {MessageType} message from Group={Group}, Node={Node}, Device={Device}",
             messageType, args.GroupId, args.EdgeNodeId, args.DeviceId);
@@ -276,13 +278,10 @@ public class SimpleHostApplication
             var edgeNodeIdInput = Console.ReadLine();
             var edgeNodeId = string.IsNullOrWhiteSpace(edgeNodeIdInput) ? defaultEdgeNodeId : edgeNodeIdInput;
 
-            // Create the payload for rebirth command
-            var payload = CreateRebirthPayload(isNodeCommand);
-
             if (isNodeCommand)
             {
                 _logger.LogInformation("Sending NCMD to {Group}/{Node}", groupId, edgeNodeId);
-                await _hostApplication.PublishEdgeNodeCommandMessageAsync(groupId, edgeNodeId, payload);
+                await _hostApplication.SendEdgeNodeRebirthCommandAsync(groupId, edgeNodeId);
             }
             else
             {
@@ -293,36 +292,13 @@ public class SimpleHostApplication
                 var deviceId = string.IsNullOrWhiteSpace(deviceIdInput) ? defaultDeviceId : deviceIdInput;
 
                 _logger.LogInformation("Sending DCMD to {Group}/{Node}/{Device}", groupId, edgeNodeId, deviceId);
-                await _hostApplication.PublishDeviceCommandMessageAsync(groupId, edgeNodeId, deviceId, payload);
+                await _hostApplication.SendDeviceRebirthCommandAsync(groupId, edgeNodeId, deviceId);
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send {CommandType} command", isNodeCommand ? "edge node" : "device");
         }
-    }
-
-
-    /// <summary>
-    ///     Create a rebirth payload
-    /// </summary>
-    /// <param name="isNodeCommand">True for NCMD (Node Command), False for DCMD (Device Command)</param>
-    /// <returns>Payload object configured for rebirth command</returns>
-    private static Payload CreateRebirthPayload(bool isNodeCommand = true)
-    {
-        return new Payload
-        {
-            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-            Metrics =
-            {
-                new Metric
-                {
-                    Name = isNodeCommand ? "Node Control/Rebirth" : "Device Control/Rebirth",
-                    DateType = DataType.Boolean,
-                    Value = true
-                }
-            }
-        };
     }
 
     /// <summary>

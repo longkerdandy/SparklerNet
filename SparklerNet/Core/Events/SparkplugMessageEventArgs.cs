@@ -1,29 +1,29 @@
-﻿using MQTTnet;
+using MQTTnet;
 using SparklerNet.Core.Constants;
 using SparklerNet.Core.Model;
 
-// ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
-// ReSharper disable UnusedMember.Global
+// ReSharper disable UnusedAutoPropertyAccessor.Global
 
 namespace SparklerNet.Core.Events;
 
 /// <summary>
-///     Event arguments for Sparkplug Edge Node message received events.
+///     Represents a message context containing all necessary information for message processing and caching
 /// </summary>
 /// <param name="version">The Sparkplug specification version</param>
 /// <param name="messageType">The Sparkplug message type</param>
 /// <param name="groupId">The Group ID</param>
 /// <param name="edgeNodeId">The Edge Node ID</param>
-/// <param name="payload">The payload of the message</param>
-/// <param name="mqttEventArgs">The original MQTT message received event arguments</param>
-public sealed class EdgeNodeMessageEventArgs(
+/// <param name="deviceId">The Device ID (optional)</param>
+/// <param name="payload">The message payload</param>
+/// <param name="eventArgs">The original MQTT message received event arguments</param>
+public class SparkplugMessageEventArgs(
     SparkplugVersion version,
     SparkplugMessageType messageType,
     string groupId,
     string edgeNodeId,
+    string? deviceId,
     Payload payload,
-    MqttApplicationMessageReceivedEventArgs mqttEventArgs)
-    : EventArgs
+    MqttApplicationMessageReceivedEventArgs eventArgs) : EventArgs
 {
     /// <summary>
     ///     The Sparkplug specification version
@@ -46,12 +46,17 @@ public sealed class EdgeNodeMessageEventArgs(
     public string EdgeNodeId { get; init; } = edgeNodeId;
 
     /// <summary>
-    ///     The payload of the message
+    ///     The Device ID (optional)
+    /// </summary>
+    public string? DeviceId { get; init; } = deviceId;
+
+    /// <summary>
+    ///     The message payload
     /// </summary>
     public Payload Payload { get; init; } = payload;
 
     /// <summary>
     ///     The original MQTT message received event arguments
     /// </summary>
-    public MqttApplicationMessageReceivedEventArgs MqttEventArgs { get; init; } = mqttEventArgs;
+    public MqttApplicationMessageReceivedEventArgs EventArgs { get; init; } = eventArgs;
 }
