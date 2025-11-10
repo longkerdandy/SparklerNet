@@ -1,10 +1,6 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
-using MQTTnet.Formatter;
-using Serilog;
-using Serilog.Extensions.Logging;
 using SparklerNet.Core.Constants;
 using SparklerNet.Core.Events;
 using SparklerNet.Core.Model;
@@ -18,6 +14,10 @@ namespace SparklerNet.Samples;
 /// <summary>
 ///     A simple Sparkplug host application implementation
 /// </summary>
+/// <summary>
+///     Simple implementation of a Sparkplug Host Application.
+///     Manages MQTT connections and processes Sparkplug messages.
+/// </summary>
 public class SimpleHostApplication
 {
     private readonly SparkplugHostApplication _hostApplication;
@@ -25,161 +25,71 @@ public class SimpleHostApplication
     private bool _isRunning;
 
     /// <summary>
-    ///     Constructor for SimpleHostApplication
+    ///     Initializes a new instance of the SimpleHostApplication class.
     /// </summary>
     /// <param name="mqttOptions">MQTT client options</param>
     /// <param name="sparkplugOptions">Sparkplug client options</param>
-    /// <param name="logger">Logger instance for SparkplugHostApplication</param>
-    /// <param name="simpleHostLogger">Logger instance for SimpleHostApplication</param>
-    private SimpleHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions,
-        ILogger<SparkplugHostApplication> logger, ILogger<SimpleHostApplication> simpleHostLogger)
+    /// <param name="loggerFactory">Logger factory to create required loggers</param>
+    public SimpleHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions,
+        ILoggerFactory loggerFactory)
     {
+        // Initialize memory cache and host application
         var memoryCache = new MemoryCache(new MemoryCacheOptions());
-        _hostApplication = new SparkplugHostApplication(mqttOptions, sparkplugOptions, memoryCache, logger);
-        _logger = simpleHostLogger;
+        _hostApplication = new SparkplugHostApplication(mqttOptions, sparkplugOptions, memoryCache, loggerFactory);
+        _logger = loggerFactory.CreateLogger<SimpleHostApplication>();
         _isRunning = false;
     }
 
     /// <summary>
-    ///     Initialize and run the SimpleHostApplication
+    ///     Subscribes to Sparkplug message events for processing.
     /// </summary>
-    [SuppressMessage("ReSharper", "RedundantVerbatimStringPrefix")]
-    public static async Task Main()
+    public void SubscribeToEvents()
     {
-        // Configure Serilog logging
-        Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Information()
-            .WriteTo.Console()
-            .CreateLogger();
-
-        try
-        {
-            // Display ASCII art and welcome message
-            Console.WriteLine(@"====================================================");
-            Console.WriteLine(@"  _____              _       _                      ");
-            Console.WriteLine(@" / ____|            | |     | |                     ");
-            Console.WriteLine(@"| (___   ___   ___  | |_ ___| |_ _   _ _ __         ");
-            Console.WriteLine(@" \_\__ \ / _ \ / _ \ | __/ _ \ __| | | | '_ \       ");
-            Console.WriteLine(@" ____) | (_) |  __/ | ||  __/ |_| |_| | |_) |       ");
-            Console.WriteLine(@"|_____/ \___/ \___|  \__\___|\__|\__,_| .__/        ");
-            Console.WriteLine(@"                                      | |           ");
-            Console.WriteLine(@"                                      |_|           ");
-            Console.WriteLine(@"             HOST APPLICATION                       ");
-            Console.WriteLine(@"====================================================");
-            Console.WriteLine("A simple implementation of the Sparkplug Host");
-            Console.WriteLine("Application protocol for industrial IoT communication");
-            Console.WriteLine();
-            Console.WriteLine("AVAILABLE COMMANDS:");
-            Console.WriteLine("  start   - Initialize and connect to the MQTT broker");
-            Console.WriteLine("  stop    - Disconnect from the MQTT broker and shutdown");
-            Console.WriteLine("  ncmd    - Send a Rebirth command message to an Edge Node");
-            Console.WriteLine("  dcmd    - Send a Rebirth command message to a Device");
-            Console.WriteLine("  exit    - Exit the application");
-            Console.WriteLine();
-            Console.WriteLine("Enter command to begin:");
-
-            // Create MQTT client options
-            var mqttOptions = new MqttClientOptionsBuilder()
-                .WithTcpServer("BROKER.HIVEMQ.COM", 1883)
-                .WithProtocolVersion(MqttProtocolVersion.V311)
-                .Build();
-
-            // Create Sparkplug client options
-            var sparkplugOptions = new SparkplugClientOptions
-            {
-                Version = SparkplugVersion.V300,
-                HostApplicationId = "SparklerNetSimpleHostApp",
-                Subscriptions =
-                    [new MqttTopicFilterBuilder().WithTopic("spBv1.0/MIMIC/#").WithAtLeastOnceQoS().Build()],
-                EnableMessageOrdering = true
-            };
-
-            // Create a Simple Host Application instance
-            var loggerFactory = new SerilogLoggerFactory(Log.Logger);
-            var simpleHostApp = new SimpleHostApplication(
-                mqttOptions,
-                sparkplugOptions,
-                loggerFactory.CreateLogger<SparkplugHostApplication>(),
-                loggerFactory.CreateLogger<SimpleHostApplication>());
-
-            // Subscribe to events
-            simpleHostApp.SubscribeToEvents();
-
-            // Handle console input
-            await simpleHostApp.HandleConsoleInputAsync();
-        }
-        finally
-        {
-            // Clean up logging
-            await Log.CloseAndFlushAsync();
-        }
-    }
-
-    /// <summary>
-    ///     Subscribe to relevant events in HostApplication
-    /// </summary>
-    private void SubscribeToEvents()
-    {
-        _hostApplication.ConnectedReceivedAsync += HandleConnectedEvent;
-        _hostApplication.DisconnectedReceivedAsync += HandleDisconnectedEvent;
         _hostApplication.EdgeNodeBirthReceivedAsync += args => HandleEdgeNodeMessage(NBIRTH, args);
         _hostApplication.EdgeNodeDataReceivedAsync += args => HandleEdgeNodeMessage(NDATA, args);
         _hostApplication.EdgeNodeDeathReceivedAsync += args => HandleEdgeNodeMessage(NDEATH, args);
         _hostApplication.DeviceBirthReceivedAsync += args => HandleDeviceMessage(DBIRTH, args);
         _hostApplication.DeviceDataReceivedAsync += args => HandleDeviceMessage(DDATA, args);
         _hostApplication.DeviceDeathReceivedAsync += args => HandleDeviceMessage(DDEATH, args);
-        _hostApplication.StateReceivedAsync += HandleStateMessage;
         _hostApplication.UnsupportedReceivedAsync += HandleUnsupportedMessage;
     }
 
-    private Task HandleConnectedEvent(ConnectedEventArgs args)
-    {
-        _logger.LogInformation("Connected to MQTT broker with result code: {ResultCode}",
-            args.ConnectResult.ResultCode);
-        _logger.LogInformation("Successfully subscribed to {Count} topics", args.SubscribeResult.Items.Count);
-        return Task.CompletedTask;
-    }
-
-    private Task HandleDisconnectedEvent(MqttClientDisconnectedEventArgs args)
-    {
-        _logger.LogWarning("Disconnected from MQTT broker: {Reason}", args.Reason);
-        return Task.CompletedTask;
-    }
-
-    private Task HandleStateMessage(HostApplicationMessageEventArgs args)
-    {
-        _logger.LogInformation(
-            "Received {MessageType} message from Host={HostId}: Online={Online}, Timestamp={Timestamp}",
-            STATE, args.HostId, args.Payload.Online, args.Payload.Timestamp);
-        return Task.CompletedTask;
-    }
-
+    /// <summary>
+    ///     Handles unsupported MQTT messages.
+    /// </summary>
     private Task HandleUnsupportedMessage(MqttApplicationMessageReceivedEventArgs args)
     {
         _logger.LogWarning("Received Unsupported message from Topic={Topic}", args.ApplicationMessage.Topic);
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    ///     Handles edge node message events.
+    /// </summary>
     private Task HandleEdgeNodeMessage(SparkplugMessageType messageType, SparkplugMessageEventArgs args)
     {
-        _logger.LogInformation("Received {MessageType} message from Group={Group}, Node={Node}",
-            messageType, args.GroupId, args.EdgeNodeId);
-        LogPayloadData(args.Payload);
-        return Task.CompletedTask;
-    }
-
-    private Task HandleDeviceMessage(SparkplugMessageType messageType, SparkplugMessageEventArgs args)
-    {
-        _logger.LogInformation("Received {MessageType} message from Group={Group}, Node={Node}, Device={Device}",
-            messageType, args.GroupId, args.EdgeNodeId, args.DeviceId);
+        _logger.LogInformation("Received {MessageType} message from Group={Group}, Node={Node}, Seq={Seq}",
+            messageType, args.GroupId, args.EdgeNodeId, args.Payload.Seq);
         LogPayloadData(args.Payload);
         return Task.CompletedTask;
     }
 
     /// <summary>
-    ///     Handle console input commands
+    ///     Handles device message events.
     /// </summary>
-    private async Task HandleConsoleInputAsync()
+    private Task HandleDeviceMessage(SparkplugMessageType messageType, SparkplugMessageEventArgs args)
+    {
+        _logger.LogInformation(
+            "Received {MessageType} message from Group={Group}, Node={Node}, Device={Device}, Seq={Seq}", messageType,
+            args.GroupId, args.EdgeNodeId, args.DeviceId, args.Payload.Seq);
+        LogPayloadData(args.Payload);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    ///     Processes console input commands to control the host application.
+    /// </summary>
+    public async Task HandleConsoleInputAsync()
     {
         string? input;
         while ((input = Console.ReadLine()) != "exit")
@@ -212,15 +122,11 @@ public class SimpleHostApplication
         }
 
         // Ensure the application is stopped before exiting
-        if (_isRunning)
-        {
-            _logger.LogInformation("Stopping Sparkplug Host Application before exit...");
-            await _hostApplication.StopAsync();
-        }
+        if (_isRunning) await _hostApplication.StopAsync();
     }
 
     /// <summary>
-    ///     Start the host application
+    ///     Starts the Sparkplug host application and connects to the MQTT broker.
     /// </summary>
     private async Task StartHostApplicationAsync()
     {
@@ -229,19 +135,17 @@ public class SimpleHostApplication
             {
                 var (connectResult, _) = await _hostApplication.StartAsync();
                 _isRunning = connectResult.ResultCode == MqttClientConnectResultCode.Success;
-
-                if (!_isRunning) _logger.LogError("Failed to start: {ResultCode}", connectResult.ResultCode);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Exception occurred while starting host application");
             }
         else
-            _logger.LogInformation("Host application is already running.");
+            _logger.LogInformation("Sparkplug Host application is already running.");
     }
 
     /// <summary>
-    ///     Stop the host application
+    ///     Stops the Sparkplug host application and disconnects from the MQTT broker.
     /// </summary>
     private async Task StopHostApplicationAsync()
     {
@@ -256,11 +160,11 @@ public class SimpleHostApplication
                 _logger.LogError(ex, "Exception occurred while stopping host application");
             }
         else
-            _logger.LogInformation("Host application is not running.");
+            _logger.LogInformation("Sparkplug Host application is not running.");
     }
 
     /// <summary>
-    ///     Send command to the edge node or device
+    ///     Sends a rebirth command to either an edge node or device.
     /// </summary>
     /// <param name="isNodeCommand">True to send node command (NCMD), false to send device command (DCMD)</param>
     private async Task SendCommandAsync(bool isNodeCommand)
@@ -281,7 +185,7 @@ public class SimpleHostApplication
             if (isNodeCommand)
             {
                 _logger.LogInformation("Sending NCMD to {Group}/{Node}", groupId, edgeNodeId);
-                await _hostApplication.SendEdgeNodeRebirthCommandAsync(groupId, edgeNodeId);
+                await _hostApplication.PublishEdgeNodeRebirthCommandAsync(groupId, edgeNodeId);
             }
             else
             {
@@ -292,7 +196,7 @@ public class SimpleHostApplication
                 var deviceId = string.IsNullOrWhiteSpace(deviceIdInput) ? defaultDeviceId : deviceIdInput;
 
                 _logger.LogInformation("Sending DCMD to {Group}/{Node}/{Device}", groupId, edgeNodeId, deviceId);
-                await _hostApplication.SendDeviceRebirthCommandAsync(groupId, edgeNodeId, deviceId);
+                await _hostApplication.PublishDeviceRebirthCommandAsync(groupId, edgeNodeId, deviceId);
             }
         }
         catch (Exception ex)
@@ -302,16 +206,16 @@ public class SimpleHostApplication
     }
 
     /// <summary>
-    ///     Log payload data (merged EdgeNode and Device data logging)
+    ///     Logs payload data including timestamp, sequence, and metrics.
     /// </summary>
     /// <param name="payload">Payload to log</param>
     private void LogPayloadData(Payload payload)
     {
-        _logger.LogInformation("  Timestamp: {Timestamp}", payload.Timestamp);
-        _logger.LogInformation("  Sequence: {Sequence}", payload.Seq);
+        _logger.LogDebug("  Timestamp: {Timestamp}", payload.Timestamp);
+        _logger.LogDebug("  Sequence: {Sequence}", payload.Seq);
         if (!(payload.Metrics.Count > 0)) return;
-        _logger.LogInformation("  Metrics ({Count}):", payload.Metrics.Count);
+        _logger.LogDebug("  Metrics ({Count}):", payload.Metrics.Count);
         foreach (var metric in payload.Metrics)
-            _logger.LogInformation("    - {Name} {Type}: {Value}", metric.Name, metric.DateType, metric.Value);
+            _logger.LogDebug("    - {Name} {Type}: {Value}", metric.Name, metric.DateType, metric.Value);
     }
 }

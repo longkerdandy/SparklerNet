@@ -13,8 +13,8 @@ public delegate Task RebirthRequestCallback(string groupId, string edgeNodeId, s
 /// <summary>
 ///     Delegate for notifying when pending messages have been processed and are ready for consumption
 /// </summary>
-/// <param name="messageContexts">The collection of pending messages that are now ready for processing</param>
-public delegate Task PendingMessagesCallback(IEnumerable<SparkplugMessageEventArgs> messageContexts);
+/// <param name="messages">The collection of pending messages that are now ready for processing</param>
+public delegate Task PendingMessagesCallback(IEnumerable<SparkplugMessageEventArgs> messages);
 
 /// <summary>
 ///     Interface for a service responsible for managing message ordering by caching and validating sequence numbers.
@@ -37,9 +37,9 @@ public interface IMessageOrderingService
     ///     Messages with continuous sequence numbers are processed immediately
     ///     Messages with gaps in sequence are cached for later processing when the gap is filled
     /// </summary>
-    /// <param name="messageContext">The message context to process</param>
+    /// <param name="message">The message context to process</param>
     /// <returns>List of messages that can be processed (current message if continuous and any continuous pending messages)</returns>
-    List<SparkplugMessageEventArgs> ProcessMessageOrder(SparkplugMessageEventArgs messageContext);
+    List<SparkplugMessageEventArgs> ProcessMessageOrder(SparkplugMessageEventArgs message);
 
     /// <summary>
     ///     Clears the sequence cache and pending messages for a specific edge node or device

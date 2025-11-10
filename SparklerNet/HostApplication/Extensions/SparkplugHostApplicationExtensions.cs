@@ -16,7 +16,7 @@ public static class SparkplugHostApplicationExtensions
     /// <param name="groupId">The Sparkplug Group ID</param>
     /// <param name="edgeNodeId">The Sparkplug Edge Node ID</param>
     /// <returns>The MQTT Client Publish Result</returns>
-    public static Task<MqttClientPublishResult> SendEdgeNodeRebirthCommandAsync(
+    public static Task<MqttClientPublishResult> PublishEdgeNodeRebirthCommandAsync(
         this SparkplugHostApplication hostApplication, string groupId, string edgeNodeId)
     {
         ArgumentNullException.ThrowIfNull(hostApplication);
@@ -35,7 +35,7 @@ public static class SparkplugHostApplicationExtensions
     /// <param name="edgeNodeId">The Sparkplug Edge Node ID</param>
     /// <param name="deviceId">The Sparkplug Device ID</param>
     /// <returns>The MQTT Client Publish Result</returns>
-    public static Task<MqttClientPublishResult> SendDeviceRebirthCommandAsync(
+    public static Task<MqttClientPublishResult> PublishDeviceRebirthCommandAsync(
         this SparkplugHostApplication hostApplication, string groupId, string edgeNodeId, string deviceId)
     {
         ArgumentNullException.ThrowIfNull(hostApplication);
