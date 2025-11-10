@@ -23,7 +23,7 @@ public class PayloadConverterTests
                     Name = "testMetric1",
                     Alias = 123,
                     Timestamp = 1620000001L,
-                    DateType = DataType.Int32,
+                    DataType = DataType.Int32,
                     Value = 42,
                     IsHistorical = true,
                     IsTransient = false
@@ -33,7 +33,7 @@ public class PayloadConverterTests
                     Name = "testMetric2",
                     Alias = 456,
                     Timestamp = 1620000002L,
-                    DateType = DataType.String,
+                    DataType = DataType.String,
                     Value = "testValue",
                     IsHistorical = false,
                     IsTransient = true
@@ -62,7 +62,7 @@ public class PayloadConverterTests
             Assert.Equal(originalPayload.Metrics[i].Name, roundTripPayload.Metrics[i].Name);
             Assert.Equal(originalPayload.Metrics[i].Alias, roundTripPayload.Metrics[i].Alias);
             Assert.Equal(originalPayload.Metrics[i].Timestamp, roundTripPayload.Metrics[i].Timestamp);
-            Assert.Equal(originalPayload.Metrics[i].DateType, roundTripPayload.Metrics[i].DateType);
+            Assert.Equal(originalPayload.Metrics[i].DataType, roundTripPayload.Metrics[i].DataType);
             Assert.Equal(originalPayload.Metrics[i].Value, roundTripPayload.Metrics[i].Value);
             Assert.Equal(originalPayload.Metrics[i].IsHistorical, roundTripPayload.Metrics[i].IsHistorical);
             Assert.Equal(originalPayload.Metrics[i].IsTransient, roundTripPayload.Metrics[i].IsTransient);

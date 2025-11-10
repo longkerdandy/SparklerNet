@@ -212,6 +212,6 @@ public class SimpleHostApplication
         if (!(payload.Metrics.Count > 0)) return;
         _logger.LogDebug("  Metrics ({Count}):", payload.Metrics.Count);
         foreach (var metric in payload.Metrics)
-            _logger.LogDebug("    - {Name} {Type}: {Value}", metric.Name, metric.DateType, metric.Value);
+            _logger.LogDebug("    - {Name} {Type}: {Value}", metric.Name, metric.DataType, metric.Value);
     }
 }

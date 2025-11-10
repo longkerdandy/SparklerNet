@@ -32,15 +32,15 @@ public static class MetricConverter
         if (metric.Name != null) protoMetric.Name = metric.Name;
         if (metric.Alias.HasValue) protoMetric.Alias = metric.Alias.Value;
         if (metric.Timestamp.HasValue) protoMetric.Timestamp = (ulong)metric.Timestamp.Value;
-        if (metric.DateType.HasValue) protoMetric.Datatype = (uint)metric.DateType.Value;
+        if (metric.DataType.HasValue) protoMetric.Datatype = (uint)metric.DataType.Value;
         if (metric.Metadata != null) protoMetric.Metadata = metric.Metadata.ToProtoMetaData();
         if (metric.Properties != null) protoMetric.Properties = metric.Properties.ToProtoPropertySet();
 
         // Only set the value if it's not null and DateType is specified
-        if (metric is not { DateType: not null, IsNull: false }) return protoMetric;
+        if (metric is not { DataType: not null, IsNull: false }) return protoMetric;
 
         // Set the value based on the data type
-        Action valueAssignment = metric.DateType switch
+        Action valueAssignment = metric.DataType switch
         {
             DataType.Int8 or DataType.Int16 or DataType.Int32 or DataType.UInt8 or DataType.UInt16 or DataType.UInt32 =>
                 () => protoMetric.IntValue = Convert.ToUInt32(metric.Value),
@@ -75,7 +75,7 @@ public static class MetricConverter
             DataType.BooleanArray => () => protoMetric.BytesValue = CopyFrom(SerializeArray((bool[])metric.Value!)),
             DataType.DateTimeArray => () => protoMetric.BytesValue = CopyFrom(SerializeArray((long[])metric.Value!)),
             DataType.StringArray => () => protoMetric.BytesValue = CopyFrom(SerializeArray((string[])metric.Value!)),
-            _ => throw new NotSupportedException($"Data type {metric.DateType} is not supported in Metric conversion")
+            _ => throw new NotSupportedException($"Data type {metric.DataType} is not supported in Metric conversion")
         };
         // Execute the conversion action
         valueAssignment();
@@ -102,7 +102,7 @@ public static class MetricConverter
             Name = protoMetric.Name, // Will be null if not set
             Alias = protoMetric.Alias != 0 ? protoMetric.Alias : null,
             Timestamp = protoMetric.Timestamp != 0 ? (long?)protoMetric.Timestamp : null,
-            DateType = dataType,
+            DataType = dataType,
             IsHistorical = protoMetric.IsHistorical,
             IsTransient = protoMetric.IsTransient,
             Metadata = protoMetric.Metadata?.ToMetaData(),

@@ -197,11 +197,6 @@ public class MessageOrderingService : IMessageOrderingService
     /// <returns>True if the sequence is continuous, false if there's a gap</returns>
     private bool UpdateSequenceNumber(SparkplugMessageEventArgs message)
     {
-        ArgumentNullException.ThrowIfNull(message);
-
-        // Validate sequence number is within the allowed range
-        if (message.Payload.Seq is < 0 or >= SequenceNumberRange) return false;
-
         // Build cache key for the sequence number tracking
         var cacheKey = BuildCacheKey(SequenceKeyPrefix, message.GroupId, message.EdgeNodeId,
             message.DeviceId);
@@ -227,10 +222,6 @@ public class MessageOrderingService : IMessageOrderingService
     /// <param name="message">The message context containing sequence number and message data</param>
     private void CachePendingMessage(SparkplugMessageEventArgs message)
     {
-        ArgumentNullException.ThrowIfNull(message);
-        // Validate sequence number is within the allowed range
-        if (message.Payload.Seq is < 0 or >= SequenceNumberRange) return;
-
         // Build cache key for pending messages
         var pendingKey = BuildCacheKey(PendingKeyPrefix, message.GroupId, message.EdgeNodeId,
             message.DeviceId);

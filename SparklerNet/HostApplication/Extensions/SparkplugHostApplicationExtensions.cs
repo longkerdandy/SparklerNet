@@ -62,7 +62,7 @@ public static class SparkplugHostApplicationExtensions
                 new Metric
                 {
                     Name = isNodeCommand ? "Node Control/Rebirth" : "Device Control/Rebirth",
-                    DateType = DataType.Boolean,
+                    DataType = DataType.Boolean,
                     Value = true
                 }
             }

@@ -18,8 +18,8 @@ public class TemplateConverterTests
             TemplateRef = "device-template-v1",
             Metrics =
             [
-                new Metric { Name = "temperature", DateType = DataType.Float, Value = 25.5f },
-                new Metric { Name = "humidity", DateType = DataType.Float, Value = 60.0f }
+                new Metric { Name = "temperature", DataType = DataType.Float, Value = 25.5f },
+                new Metric { Name = "humidity", DataType = DataType.Float, Value = 60.0f }
             ],
             Parameters = [new Parameter { Name = "updateInterval", Type = DataType.Int32, Value = 60 }]
         };
@@ -40,7 +40,7 @@ public class TemplateConverterTests
         for (var i = 0; i < originalTemplate.Metrics.Count; i++)
         {
             Assert.Equal(originalTemplate.Metrics[i].Name, roundTripTemplate.Metrics[i].Name);
-            Assert.Equal(originalTemplate.Metrics[i].DateType, roundTripTemplate.Metrics[i].DateType);
+            Assert.Equal(originalTemplate.Metrics[i].DataType, roundTripTemplate.Metrics[i].DataType);
             Assert.Equal(originalTemplate.Metrics[i].Value, roundTripTemplate.Metrics[i].Value);
         }
 
@@ -115,8 +115,8 @@ public class TemplateConverterTests
             Version = "1.0",
             Metrics =
             [
-                new Metric { Name = "pressure", DateType = DataType.Double, Value = 1013.25 },
-                new Metric { Name = "status", DateType = DataType.Boolean, Value = true }
+                new Metric { Name = "pressure", DataType = DataType.Double, Value = 1013.25 },
+                new Metric { Name = "status", DataType = DataType.Boolean, Value = true }
             ]
         };
 
