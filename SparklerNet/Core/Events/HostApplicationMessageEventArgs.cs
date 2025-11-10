@@ -8,7 +8,7 @@ using SparklerNet.Core.Model;
 namespace SparklerNet.Core.Events;
 
 /// <summary>
-///     Event arguments for Sparkplug Host Application message received events.
+///     Event arguments for the Sparkplug Host Application message received events.
 /// </summary>
 /// <param name="version">The Sparkplug specification version</param>
 /// <param name="messageType">The Sparkplug message type</param>
