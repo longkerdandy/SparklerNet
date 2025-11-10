@@ -27,7 +27,7 @@ public record Metric
     /// <summary>
     ///     The date type of the metric value.
     /// </summary>
-    public DataType? DateType { get; init; }
+    public DataType? DataType { get; init; }
 
     /// <summary>
     ///     Indicates whether the metric represents a historical value.

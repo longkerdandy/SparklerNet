@@ -9,22 +9,22 @@ namespace SparklerNet.Core.Events;
 public sealed class SparkplugMessageEvents
 {
     // NBIRTH Event
-    public AsyncEvent<EdgeNodeMessageEventArgs> EdgeNodeBirthReceivedEvent { get; } = new();
+    public AsyncEvent<SparkplugMessageEventArgs> EdgeNodeBirthReceivedEvent { get; } = new();
 
     // NDEATH Event
-    public AsyncEvent<EdgeNodeMessageEventArgs> EdgeNodeDeathReceivedEvent { get; } = new();
+    public AsyncEvent<SparkplugMessageEventArgs> EdgeNodeDeathReceivedEvent { get; } = new();
 
     // NDATA Event
-    public AsyncEvent<EdgeNodeMessageEventArgs> EdgeNodeDataReceivedEvent { get; } = new();
+    public AsyncEvent<SparkplugMessageEventArgs> EdgeNodeDataReceivedEvent { get; } = new();
 
     // DBirth Event
-    public AsyncEvent<DeviceMessageEventArgs> DeviceBirthReceivedEvent { get; } = new();
+    public AsyncEvent<SparkplugMessageEventArgs> DeviceBirthReceivedEvent { get; } = new();
 
     // DDeath Event
-    public AsyncEvent<DeviceMessageEventArgs> DeviceDeathReceivedEvent { get; } = new();
+    public AsyncEvent<SparkplugMessageEventArgs> DeviceDeathReceivedEvent { get; } = new();
 
     // DDATA Event
-    public AsyncEvent<DeviceMessageEventArgs> DeviceDataReceivedEvent { get; } = new();
+    public AsyncEvent<SparkplugMessageEventArgs> DeviceDataReceivedEvent { get; } = new();
 
     // STATE Event
     public AsyncEvent<HostApplicationMessageEventArgs> StateReceivedEvent { get; } = new();
