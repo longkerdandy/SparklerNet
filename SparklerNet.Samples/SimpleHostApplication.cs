@@ -14,10 +14,6 @@ namespace SparklerNet.Samples;
 /// <summary>
 ///     A simple Sparkplug host application implementation
 /// </summary>
-/// <summary>
-///     Simple implementation of a Sparkplug Host Application.
-///     Manages MQTT connections and processes Sparkplug messages.
-/// </summary>
 public class SimpleHostApplication
 {
     private readonly SparkplugHostApplication _hostApplication;
