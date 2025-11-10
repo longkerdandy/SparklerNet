@@ -136,7 +136,7 @@ var payload = new Payload
         new Metric
         {
             Name = "Device Control/Rebirth",
-            DateType = DataType.Boolean,
+            DataType = DataType.Boolean,
             Value = true
         }
     }
