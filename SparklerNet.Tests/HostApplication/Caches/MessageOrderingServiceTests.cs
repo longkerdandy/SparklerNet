@@ -95,6 +95,14 @@ public class MessageOrderingServiceTests
         Assert.Equal(1, result1[0].Payload.Seq);
         Assert.Equal(2, result2[0].Payload.Seq);
         Assert.Equal(3, result3[0].Payload.Seq);
+
+        // Verify IsSeqConsecutive and IsCached fields for consecutive messages
+        Assert.True(result1[0].IsSeqConsecutive);
+        Assert.False(result1[0].IsCached);
+        Assert.True(result2[0].IsSeqConsecutive);
+        Assert.False(result2[0].IsCached);
+        Assert.True(result3[0].IsSeqConsecutive);
+        Assert.False(result3[0].IsCached);
     }
 
     [Fact]
@@ -113,6 +121,16 @@ public class MessageOrderingServiceTests
         Assert.Equal(2, result2.Count); // Should process both messages 2 and 3 when the gap is filled
         Assert.Equal(2, result2[0].Payload.Seq);
         Assert.Equal(3, result2[1].Payload.Seq);
+
+        // Verify fields for the immediately processed message
+        Assert.True(result1[0].IsSeqConsecutive);
+        Assert.False(result1[0].IsCached);
+
+        // Verify fields for the cached and then processed messages
+        Assert.True(result2[0].IsSeqConsecutive);
+        Assert.False(result2[0].IsCached);
+        Assert.True(result2[1].IsSeqConsecutive);
+        Assert.True(result2[1].IsCached);
     }
 
     [Fact]
@@ -149,6 +167,22 @@ public class MessageOrderingServiceTests
         Assert.Equal(2, result5.Count); // Messages 5 and 6 processed when the gap is filled
         Assert.Equal(5, result5[0].Payload.Seq);
         Assert.Equal(6, result5[1].Payload.Seq);
+
+        // Verify fields for immediately processed consecutive messages
+        Assert.True(result1[0].IsSeqConsecutive);
+        Assert.False(result1[0].IsCached);
+        Assert.True(result2[0].IsSeqConsecutive);
+        Assert.False(result2[0].IsCached);
+
+        // Verify fields for messages processed from the cache
+        Assert.True(result3[0].IsSeqConsecutive);
+        Assert.False(result3[0].IsCached);
+        Assert.True(result3[1].IsSeqConsecutive);
+        Assert.True(result3[1].IsCached);
+        Assert.True(result5[0].IsSeqConsecutive);
+        Assert.False(result5[0].IsCached);
+        Assert.True(result5[1].IsSeqConsecutive);
+        Assert.True(result5[1].IsCached);
     }
 
     [Fact]
@@ -168,6 +202,16 @@ public class MessageOrderingServiceTests
         Assert.Single(result255);
         Assert.Single(result0); // Should handle wrap-around
         Assert.Single(result1);
+
+        // Verify fields including the sequence wrap-around case
+        Assert.True(result254[0].IsSeqConsecutive);
+        Assert.False(result254[0].IsCached);
+        Assert.True(result255[0].IsSeqConsecutive);
+        Assert.False(result255[0].IsCached);
+        Assert.True(result0[0].IsSeqConsecutive); // Verify wrap-around sequence is treated as consecutive
+        Assert.False(result0[0].IsCached);
+        Assert.True(result1[0].IsSeqConsecutive);
+        Assert.False(result1[0].IsCached);
     }
 
     [Fact]
@@ -342,6 +386,7 @@ public class MessageOrderingServiceTests
             "Edge1",
             "Device1",
             payload,
-            null!);
+            null!
+        );
     }
 }

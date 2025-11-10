@@ -243,6 +243,7 @@ public class MessageOrderingService : IMessageOrderingService
                 : new SortedDictionary<int, SparkplugMessageEventArgs>(new CircularSequenceComparer());
 
         // Add or update the message with this sequence number
+        message.IsCached = true; // Mark the message as cached
         pendingMessages[message.Payload.Seq] = message;
 
         // Cache the updated pending messages
@@ -321,8 +322,9 @@ public class MessageOrderingService : IMessageOrderingService
                 // Process if it's the expected next sequence or if we're in timeout mode (-1)
                 if (firstKey == nextExpectedSeq || nextExpectedSeq < 0)
                 {
-                    var messageContext = pendingMessages[firstKey];
-                    result.Add(messageContext);
+                    var message = pendingMessages[firstKey];
+                    message.IsSeqConsecutive = nextExpectedSeq >= 0; // Check if the sequence is consecutive
+                    result.Add(message);
                     pendingMessages.Remove(firstKey);
                     currentSeq = firstKey;
                     nextExpectedSeq = (currentSeq + 1) % SequenceNumberRange;

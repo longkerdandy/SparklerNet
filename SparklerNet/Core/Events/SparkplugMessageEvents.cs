@@ -1,6 +1,5 @@
 ﻿using MQTTnet;
 using MQTTnet.Internal;
-using SparklerNet.Core.Model;
 
 namespace SparklerNet.Core.Events;
 

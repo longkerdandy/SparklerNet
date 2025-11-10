@@ -32,8 +32,8 @@ This implementation follows the requirements specified in the Sparkplug specific
 ### Comprehensive Message Processing Flow
 
 ```
-ProcessMessageOrder(MessageContext context)
-├── Validate context is not null
+ProcessMessageOrder(SparkplugMessageEventArgs message)
+├── Validate message is not null
 ├── Validate sequence number is within range (0-255)
 ├── Acquire fine-grained lock for thread safety
 │   ├── Build cache key for sequence tracking
@@ -87,25 +87,22 @@ ProcessMessageOrder(MessageContext context)
 ```
 OnReorderTimeout(object? state)
 ├── Validate and parse timer key to extract identifiers
-├── Check if ProcessDisorderedMessages is enabled
-│   ├── YES ─┬─ Acquire lock
-│   │        ├── Remove and dispose timer
-│   │        ├── Get all pending messages (with seq = -1)
-│   │        │   ├── Build all required cache keys (seqKey, pendingKey, timerKey)
-│   │        │   ├── Check if pending messages exist
-│   │        │   ├── Process pending messages in sequential order (timeout mode still processes consecutive sequences)
-│   │        │   │   ├── Set seq = -1 to indicate timeout mode
-│   │        │   │   ├── Loop until no more continuous messages found
-│   │        │   │   ├── Process first message in pending collection (timeout mode bypasses sequence check)
-│   │        │   │   ├── Add to results and remove from pending collection
-│   │        │   │   └── Update current sequence and expected next sequence
-│   │        │   ├── Update cache with new current sequence
-│   │        │   └── Update or clean up cache
-│   │        │       ├── If pending messages remain and size changed ── Update cache and reset timer
-│   │        │       └── If pending messages count is 0 ── Remove cache entry (timer already disposed)
-│   │        └── Notify via OnPendingMessages delegate if messages exist
-│   │
-│   └── NO ── Acquire lock and clean up timer only
+├── Acquire lock for thread safety
+│   ├── Remove and dispose timer to prevent duplicate callbacks
+│   ├── Get all pending messages (with seq = -1 to indicate timeout mode)
+│   │   ├── Build all required cache keys (seqKey, pendingKey, timerKey)
+│   │   ├── Check if pending messages exist
+│   │   ├── Process pending messages in sequential order (timeout mode still processes consecutive sequences)
+│   │   │   ├── Loop until no more continuous messages found
+│   │   │   ├── Process first message in pending collection (timeout mode bypasses sequence check)
+│   │   │   ├── Add to results and remove from pending collection
+│   │   │   └── Update current sequence and expected next sequence
+│   │   ├── Update cache with new current sequence
+│   │   └── Update or clean up cache
+│   │       ├── If pending messages remain and size changed ── Update cache and reset timer
+│   │       └── If pending messages count is 0 ── Remove cache entry (timer already disposed)
+└── Exit lock
+├── Call OnPendingMessages delegate outside lock if pending messages exist
 └── Check if SendRebirthWhenTimeout is enabled
     └── YES ── Send rebirth request via OnRebirthRequested delegate
 ```

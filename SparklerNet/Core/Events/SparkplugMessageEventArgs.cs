@@ -3,6 +3,8 @@ using SparklerNet.Core.Constants;
 using SparklerNet.Core.Model;
 
 // ReSharper disable UnusedAutoPropertyAccessor.Global
+// ReSharper disable UnusedMember.Global
+// ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
 
 namespace SparklerNet.Core.Events;
 
@@ -16,6 +18,9 @@ namespace SparklerNet.Core.Events;
 /// <param name="deviceId">The Device ID (optional)</param>
 /// <param name="payload">The message payload</param>
 /// <param name="eventArgs">The original MQTT message received event arguments</param>
+/// <param name="isSeqConsecutive">Indicates whether the message sequence number is consecutive</param>
+/// <param name="isCached">Indicates whether the message is cached</param>
+/// <param name="timestamp">The timestamp when the message was received on the application layer in milliseconds</param>
 public class SparkplugMessageEventArgs(
     SparkplugVersion version,
     SparkplugMessageType messageType,
@@ -23,7 +28,10 @@ public class SparkplugMessageEventArgs(
     string edgeNodeId,
     string? deviceId,
     Payload payload,
-    MqttApplicationMessageReceivedEventArgs eventArgs) : EventArgs
+    MqttApplicationMessageReceivedEventArgs eventArgs,
+    bool isSeqConsecutive = true,
+    bool isCached = false,
+    long timestamp = 0) : EventArgs
 {
     /// <summary>
     ///     The Sparkplug specification version
@@ -59,4 +67,19 @@ public class SparkplugMessageEventArgs(
     ///     The original MQTT message received event arguments
     /// </summary>
     public MqttApplicationMessageReceivedEventArgs EventArgs { get; init; } = eventArgs;
+
+    /// <summary>
+    ///     Indicates whether the message sequence number is consecutive to the expected sequence number
+    /// </summary>
+    public bool IsSeqConsecutive { get; set; } = isSeqConsecutive;
+
+    /// <summary>
+    ///     Indicates whether the message is cached
+    /// </summary>
+    public bool IsCached { get; set; } = isCached;
+
+    /// <summary>
+    ///     The timestamp when the message was received on the application layer in milliseconds
+    /// </summary>
+    public long Timestamp { get; init; } = timestamp == 0 ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() : timestamp;
 }
