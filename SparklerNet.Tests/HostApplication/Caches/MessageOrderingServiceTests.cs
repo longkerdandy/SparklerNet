@@ -96,7 +96,6 @@ public class MessageOrderingServiceTests
         Assert.Equal(2, result2[0].Payload.Seq);
         Assert.Equal(3, result3[0].Payload.Seq);
 
-        // Verify IsSeqConsecutive and IsCached fields for consecutive messages
         Assert.True(result1[0].IsSeqConsecutive);
         Assert.False(result1[0].IsCached);
         Assert.True(result2[0].IsSeqConsecutive);
@@ -215,7 +214,7 @@ public class MessageOrderingServiceTests
     }
 
     [Fact]
-    public void ProcessMessageOrder_ShouldRejectInvalidSequenceNumbers()
+    public void ProcessMessageOrder_ShouldReturnInvalidSequenceNumberMessages()
     {
         var invalidMessageNegative = CreateMessageEventArgs(-1);
         var invalidMessageTooHigh = CreateMessageEventArgs(256);
@@ -223,8 +222,11 @@ public class MessageOrderingServiceTests
         var resultNegative = _service.ProcessMessageOrder(invalidMessageNegative);
         var resultTooHigh = _service.ProcessMessageOrder(invalidMessageTooHigh);
 
-        Assert.Empty(resultNegative);
-        Assert.Empty(resultTooHigh);
+        // Verify that invalid sequence number messages are returned
+        Assert.Single(resultNegative);
+        Assert.Single(resultTooHigh);
+        Assert.Same(invalidMessageNegative, resultNegative[0]);
+        Assert.Same(invalidMessageTooHigh, resultTooHigh[0]);
     }
 
     [Fact]
@@ -251,65 +253,40 @@ public class MessageOrderingServiceTests
         var mockLogger = new Mock<ILogger<MessageOrderingService>>();
         var mockLoggerFactory = new Mock<ILoggerFactory>();
         mockLoggerFactory.Setup(lf => lf.CreateLogger(It.IsAny<string>())).Returns(mockLogger.Object);
-        var service = new MessageOrderingService(memoryCache, options, mockLoggerFactory.Object);
 
-        // This test verifies the service can handle basic message ordering without relying on the timeout mechanism
-        var message1 = CreateMessageEventArgs(1);
-        var message2 = CreateMessageEventArgs(2);
-        var message3 = CreateMessageEventArgs(3);
+        // List to capture pending messages processed by the timeout handler
+        List<SparkplugMessageEventArgs>? capturedMessages = null;
 
-        // Process messages in order
-        var result1 = service.ProcessMessageOrder(message1);
-        var result2 = service.ProcessMessageOrder(message2);
-        var result3 = service.ProcessMessageOrder(message3);
-
-        // Verify messages were processed correctly
-        Assert.NotNull(result1);
-        Assert.NotNull(result2);
-        Assert.NotNull(result3);
-
-        // Verify payload sequence numbers are correct
-        Assert.Equal(1, message1.Payload.Seq);
-        Assert.Equal(2, message2.Payload.Seq);
-        Assert.Equal(3, message3.Payload.Seq);
-    }
-
-    [Fact]
-    public async Task OnReorderTimeout_ShouldLogDebugMessage_WhenProcessingPendingMessages()
-    {
-        var memoryCache = new MemoryCache(new MemoryCacheOptions());
-        var options = new SparkplugClientOptions { HostApplicationId = "TestHost" };
-        var mockLogger = new Mock<ILogger<MessageOrderingService>>();
-        var mockLoggerFactory = new Mock<ILoggerFactory>();
-        mockLoggerFactory.Setup(lf => lf.CreateLogger(It.IsAny<string>())).Returns(mockLogger.Object);
         var service = new MessageOrderingService(memoryCache, options, mockLoggerFactory.Object)
         {
-            OnPendingMessages = _ => Task.CompletedTask
+            // Set up the delegate to capture pending messages when processed by timeout
+            OnPendingMessages = messages =>
+            {
+                capturedMessages = [.. messages];
+                return Task.CompletedTask;
+            }
         };
 
-        // Create messages with sequence numbers 1 and 3 (simulate out of order)
+        // Create out-of-order messages to generate pending messages
         var message1 = CreateMessageEventArgs(1);
-        var message3 = CreateMessageEventArgs(3);
+        var message3 = CreateMessageEventArgs(3); // This will be cached as pending
 
-        // Process messages
+        // Process messages to create pending state
         service.ProcessMessageOrder(message1);
         service.ProcessMessageOrder(message3);
 
+        // Simulate timeout by directly invoking the OnReorderTimeout method
         const string timerKey = "Group1:Edge1:Device1";
-        service.GetType().GetMethod("OnReorderTimeout", BindingFlags.NonPublic | BindingFlags.Instance)
-            ?.Invoke(service, [timerKey]);
+        service.GetType().GetMethod("OnReorderTimeout", BindingFlags.NonPublic | BindingFlags.Instance)?
+            .Invoke(service, [timerKey]);
 
-        await Task.Delay(100);
+        // Allow async operation to complete
+        Thread.Sleep(100);
 
-        // Verify debug log was generated for processing pending messages
-        mockLogger.Verify(
-            logger => logger.Log(
-                LogLevel.Debug,
-                It.IsAny<EventId>(),
-                It.IsAny<It.IsAnyType>(),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.AtLeastOnce);
+        // Verify that pending messages were processed during timeout
+        Assert.NotNull(capturedMessages);
+        Assert.Single(capturedMessages);
+        Assert.Equal(3, capturedMessages[0].Payload.Seq);
     }
 
     [Fact]
@@ -370,6 +347,40 @@ public class MessageOrderingServiceTests
         Assert.Equal("Group1", actualGroupId);
         Assert.Equal("Edge1", actualEdgeNodeId);
         Assert.Equal("Device1", actualDeviceId);
+    }
+
+    [Fact]
+    public void ProcessMessageOrder_ShouldReturnReplacedMessage_WhenSequenceDuplicate()
+    {
+        // Create the first message with sequence 2 that will be cached
+        var message1 = CreateMessageEventArgs(1);
+        var message3 = CreateMessageEventArgs(3); // Will be cached
+        var result1 = _service.ProcessMessageOrder(message1);
+        var result3 = _service.ProcessMessageOrder(message3);
+
+        // Verify initial messages were processed/cached correctly
+        Assert.Single(result1);
+        Assert.Empty(result3); // Message 3 should be cached
+
+        // Create the second message with the same sequence 3 as the cached message
+        var duplicateMessage3 = CreateMessageEventArgs(3);
+        var resultDuplicate = _service.ProcessMessageOrder(duplicateMessage3);
+
+        // Verify the result contains the original cached message (which was replaced)
+        Assert.Single(resultDuplicate);
+        Assert.Equal(3, resultDuplicate[0].Payload.Seq);
+        Assert.Same(message3, resultDuplicate[0]); // Should return the original cached message
+        Assert.True(resultDuplicate[0].IsCached); // Original message should have IsCached = true
+
+        // Now process message 2 to trigger processing of the duplicate message
+        var message2 = CreateMessageEventArgs(2);
+        var result2 = _service.ProcessMessageOrder(message2);
+
+        // Verify message 2 and the duplicate message 3 are processed
+        Assert.Equal(2, result2.Count);
+        Assert.Equal(2, result2[0].Payload.Seq);
+        Assert.Equal(3, result2[1].Payload.Seq);
+        Assert.Same(duplicateMessage3, result2[1]); // Should use the new duplicate message, not the original
     }
 
     private static SparkplugMessageEventArgs CreateMessageEventArgs(int sequenceNumber)

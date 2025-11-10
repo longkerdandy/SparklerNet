@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using SparklerNet.Core.Events;
+using SparklerNet.Core.Extensions;
 using SparklerNet.Core.Options;
 
 namespace SparklerNet.HostApplication.Caches;
@@ -60,10 +61,11 @@ public class MessageOrderingService : IMessageOrderingService
     {
         ArgumentNullException.ThrowIfNull(message);
 
-        var result = new List<SparkplugMessageEventArgs>();
         // Validate sequence number is within the allowed range
-        if (message.Payload.Seq is < 0 or >= SequenceNumberRange) return result;
+        // If the sequence is invalid, return the message as-is to avoid processing it further
+        if (message.Payload.Seq is < 0 or >= SequenceNumberRange) return [message];
 
+        var result = new List<SparkplugMessageEventArgs>();
         // Use fine-grained lock to ensure thread safety for this specific device/node
         lock (GetLockObject(null, message.GroupId, message.EdgeNodeId, message.DeviceId))
         {
@@ -82,7 +84,9 @@ public class MessageOrderingService : IMessageOrderingService
             else
             {
                 // If the sequence has a gap, cache the message for later processing
-                CachePendingMessage(message);
+                // Return the cached message if it exists, this indicates a duplicate sequence number
+                var oldMessage = CachePendingMessage(message);
+                if (oldMessage != null) result.Add(oldMessage);
             }
         }
 
@@ -220,7 +224,8 @@ public class MessageOrderingService : IMessageOrderingService
     ///     Caches a pending message that arrived out of order for later processing
     /// </summary>
     /// <param name="message">The message context containing sequence number and message data</param>
-    private void CachePendingMessage(SparkplugMessageEventArgs message)
+    /// <returns>The cached message if it exists (duplicated sequence number), otherwise null</returns>
+    private SparkplugMessageEventArgs? CachePendingMessage(SparkplugMessageEventArgs message)
     {
         // Build cache key for pending messages
         var pendingKey = BuildCacheKey(PendingKeyPrefix, message.GroupId, message.EdgeNodeId,
@@ -234,8 +239,9 @@ public class MessageOrderingService : IMessageOrderingService
                 : new SortedDictionary<int, SparkplugMessageEventArgs>(new CircularSequenceComparer());
 
         // Add or update the message with this sequence number
+        // If the sequence number already exists, the existing message will be returned
         message.IsCached = true; // Mark the message as cached
-        pendingMessages[message.Payload.Seq] = message;
+        pendingMessages.TryReplace(message.Payload.Seq, message, out var result);
 
         // Cache the updated pending messages
         _cache.Set(pendingKey, pendingMessages);
@@ -264,6 +270,8 @@ public class MessageOrderingService : IMessageOrderingService
             // This prevents pending messages from being stuck if the timer was lost due to concurrent operations
             _reorderTimers.TryAdd(timerKey,
                 new Timer(OnReorderTimeout, timerKey, _options.SeqReorderTimeout, Timeout.Infinite));
+
+        return result;
     }
 
     /// <summary>
@@ -278,7 +286,7 @@ public class MessageOrderingService : IMessageOrderingService
     /// </param>
     /// <returns>List of pending messages that can now be processed in order</returns>
     [SuppressMessage("ReSharper", "InvertIf")]
-    private List<SparkplugMessageEventArgs> GetPendingMessages(string groupId, string edgeNodeId, string? deviceId, 
+    private List<SparkplugMessageEventArgs> GetPendingMessages(string groupId, string edgeNodeId, string? deviceId,
         int seq)
     {
         // Validate required parameters
@@ -328,7 +336,7 @@ public class MessageOrderingService : IMessageOrderingService
         _cache.Set(seqKey, currentSeq, CreateSequenceCacheEntryOptions());
 
         // Update or remove pending messages cache and handle timer accordingly
-        // ReSharper disable once ConvertIfStatementToSwitchStatement
+        // ReSharper disable once - ConvertIfStatementToSwitchStatement
         if (pendingMessages.Count > 0 && result.Count > 0)
         {
             // Still have pending messages and size changed, update cache and reset timer
@@ -381,7 +389,7 @@ public class MessageOrderingService : IMessageOrderingService
         {
             // For circular sequence numbers (0-255), handle the wrap-around case
             // If x is near 0 (lower third) and y is near 255 (upper third), consider x > y
-            // ReSharper disable once ConvertIfStatementToSwitchStatement
+            // ReSharper disable once - ConvertIfStatementToSwitchStatement
             if (x < 32 && y > 223) return 1;
             if (x > 223 && y < 32) return -1;
 
