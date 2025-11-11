@@ -74,20 +74,13 @@ public class MessageOrderingServiceTests
     [Fact]
     public void ProcessMessageOrder_ShouldProcessContinuousSequence()
     {
-        var memoryCache = new MemoryCache(new MemoryCacheOptions());
-        var options = new SparkplugClientOptions { HostApplicationId = "TestHost" };
-        var mockLogger = new Mock<ILogger<MessageOrderingService>>();
-        var mockLoggerFactory = new Mock<ILoggerFactory>();
-        mockLoggerFactory.Setup(lf => lf.CreateLogger(It.IsAny<string>())).Returns(mockLogger.Object);
-        var service = new MessageOrderingService(memoryCache, options, mockLoggerFactory.Object);
-
         var message1 = CreateMessageEventArgs(1);
         var message2 = CreateMessageEventArgs(2);
         var message3 = CreateMessageEventArgs(3);
 
-        var result1 = service.ProcessMessageOrder(message1);
-        var result2 = service.ProcessMessageOrder(message2);
-        var result3 = service.ProcessMessageOrder(message3);
+        var result1 = _service.ProcessMessageOrder(message1);
+        var result2 = _service.ProcessMessageOrder(message2);
+        var result3 = _service.ProcessMessageOrder(message3);
 
         Assert.Single(result1);
         Assert.Single(result2);
@@ -135,13 +128,6 @@ public class MessageOrderingServiceTests
     [Fact]
     public void ProcessMessageOrder_ShouldHandleMultipleOutOfOrderMessages()
     {
-        var memoryCache = new MemoryCache(new MemoryCacheOptions());
-        var options = new SparkplugClientOptions { HostApplicationId = "TestHost" };
-        var mockLogger = new Mock<ILogger<MessageOrderingService>>();
-        var mockLoggerFactory = new Mock<ILoggerFactory>();
-        mockLoggerFactory.Setup(lf => lf.CreateLogger(It.IsAny<string>())).Returns(mockLogger.Object);
-        var service = new MessageOrderingService(memoryCache, options, mockLoggerFactory.Object);
-
         var message1 = CreateMessageEventArgs(1);
         var message4 = CreateMessageEventArgs(4);
         var message6 = CreateMessageEventArgs(6);
@@ -149,12 +135,12 @@ public class MessageOrderingServiceTests
         var message3 = CreateMessageEventArgs(3);
         var message5 = CreateMessageEventArgs(5);
 
-        var result1 = service.ProcessMessageOrder(message1);
-        var result4 = service.ProcessMessageOrder(message4);
-        var result6 = service.ProcessMessageOrder(message6);
-        var result2 = service.ProcessMessageOrder(message2);
-        var result3 = service.ProcessMessageOrder(message3);
-        var result5 = service.ProcessMessageOrder(message5);
+        var result1 = _service.ProcessMessageOrder(message1);
+        var result4 = _service.ProcessMessageOrder(message4);
+        var result6 = _service.ProcessMessageOrder(message6);
+        var result2 = _service.ProcessMessageOrder(message2);
+        var result3 = _service.ProcessMessageOrder(message3);
+        var result5 = _service.ProcessMessageOrder(message5);
 
         Assert.Single(result1); // Message 1 processed immediately
         Assert.Empty(result4); // Message 4 cached
@@ -271,7 +257,7 @@ public class MessageOrderingServiceTests
         var message1 = CreateMessageEventArgs(1);
         var message3 = CreateMessageEventArgs(3); // This will be cached as pending
 
-        // Process messages to create pending state
+        // Process messages to create a pending state
         service.ProcessMessageOrder(message1);
         service.ProcessMessageOrder(message3);
 

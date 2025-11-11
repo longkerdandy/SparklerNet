@@ -8,20 +8,24 @@ namespace SparklerNet.Tests.Core.Model.Conversion;
 
 public class TemplateConverterTests
 {
-    [Fact]
-    public void TemplateRoundTrip_PreservesData()
+    [Theory]
+    [InlineData("1.0.0", true, "device-template-v1", 25.5f, 60.0f, 60)]
+    [InlineData("2.0.0", false, "device-template-v2", 30.0f, 70.0f, 30)]
+    public void TemplateRoundTrip_PreservesData(string version, bool isDefinition, string templateRef, float tempValue,
+        float humidValue, int intervalValue)
     {
+        // Test that template data is preserved after round-trip conversion
         var originalTemplate = new Template
         {
-            Version = "1.0.0",
-            IsDefinition = true,
-            TemplateRef = "device-template-v1",
+            Version = version,
+            IsDefinition = isDefinition,
+            TemplateRef = templateRef,
             Metrics =
             [
-                new Metric { Name = "temperature", DataType = DataType.Float, Value = 25.5f },
-                new Metric { Name = "humidity", DataType = DataType.Float, Value = 60.0f }
+                new Metric { Name = "temperature", DataType = DataType.Float, Value = tempValue },
+                new Metric { Name = "humidity", DataType = DataType.Float, Value = humidValue }
             ],
-            Parameters = [new Parameter { Name = "updateInterval", Type = DataType.Int32, Value = 60 }]
+            Parameters = [new Parameter { Name = "updateInterval", Type = DataType.Int32, Value = intervalValue }]
         };
 
         var protoTemplate = originalTemplate.ToProtoTemplate();
@@ -53,66 +57,77 @@ public class TemplateConverterTests
         }
     }
 
-    [Fact]
-    public void ToProtoTemplate_NullTemplate_ThrowsArgumentNullException()
+    [Theory]
+    [InlineData(null)]
+    public void ToProtoTemplate_NullTemplate_ThrowsArgumentNullException(Template? template)
     {
-        Template template = null!;
-        Assert.Throws<ArgumentNullException>(() => template.ToProtoTemplate());
+        // Test that a null template throws ArgumentNullException
+        Assert.Throws<ArgumentNullException>(() => template!.ToProtoTemplate());
     }
 
-    [Fact]
-    public void ToTemplate_NullProtoTemplate_ThrowsArgumentNullException()
+    [Theory]
+    [InlineData(null)]
+    public void ToTemplate_NullProtoTemplate_ThrowsArgumentNullException(ProtoTemplate? protoTemplate)
     {
-        ProtoTemplate protoTemplate = null!;
-        Assert.Throws<ArgumentNullException>(() => protoTemplate.ToTemplate());
+        // Test that a null proto template throws ArgumentNullException
+        Assert.Throws<ArgumentNullException>(() => protoTemplate!.ToTemplate());
     }
 
-    [Fact]
-    public void ToProtoTemplate_BasicTemplate_ConvertsCorrectly()
+    [Theory]
+    [InlineData("2.0", true, "basic-template")]
+    [InlineData("1.5", false, "test-template")]
+    public void ToProtoTemplate_BasicTemplate_ConvertsCorrectly(string version, bool isDefinition, string templateRef)
     {
+        // Test basic template properties conversion to proto
         var template = new Template
         {
-            Version = "2.0",
-            IsDefinition = true,
-            TemplateRef = "basic-template"
+            Version = version,
+            IsDefinition = isDefinition,
+            TemplateRef = templateRef
         };
 
         var protoTemplate = template.ToProtoTemplate();
 
         Assert.NotNull(protoTemplate);
-        Assert.Equal("2.0", protoTemplate.Version);
-        Assert.True(protoTemplate.IsDefinition);
-        Assert.Equal("basic-template", protoTemplate.TemplateRef);
+        Assert.Equal(version, protoTemplate.Version);
+        Assert.Equal(isDefinition, protoTemplate.IsDefinition);
+        Assert.Equal(templateRef, protoTemplate.TemplateRef);
         Assert.Empty(protoTemplate.Metrics);
         Assert.Empty(protoTemplate.Parameters);
     }
 
-    [Fact]
-    public void ToTemplate_BasicProtoTemplate_ConvertsCorrectly()
+    [Theory]
+    [InlineData("3.0", false, "proto-template")]
+    [InlineData("4.0", true, "another-template")]
+    public void ToTemplate_BasicProtoTemplate_ConvertsCorrectly(string version, bool isDefinition, string templateRef)
     {
+        // Test basic proto template properties conversion to template
         var protoTemplate = new ProtoTemplate
         {
-            Version = "3.0",
-            IsDefinition = false,
-            TemplateRef = "proto-template"
+            Version = version,
+            IsDefinition = isDefinition,
+            TemplateRef = templateRef
         };
 
         var template = protoTemplate.ToTemplate();
 
         Assert.NotNull(template);
-        Assert.Equal("3.0", template.Version);
-        Assert.False(template.IsDefinition);
-        Assert.Equal("proto-template", template.TemplateRef);
+        Assert.Equal(version, template.Version);
+        Assert.Equal(isDefinition, template.IsDefinition);
+        Assert.Equal(templateRef, template.TemplateRef);
         Assert.NotNull(template.Metrics);
         Assert.Empty(template.Metrics);
     }
 
-    [Fact]
-    public void ToProtoTemplate_TemplateWithMetrics_ConvertsMetricsCorrectly()
+    [Theory]
+    [InlineData("1.0")]
+    [InlineData("2.0")]
+    public void ToProtoTemplate_TemplateWithMetrics_ConvertsMetricsCorrectly(string version)
     {
+        // Test template metrics conversion to proto
         var template = new Template
         {
-            Version = "1.0",
+            Version = version,
             Metrics =
             [
                 new Metric { Name = "pressure", DataType = DataType.Double, Value = 1013.25 },
@@ -128,35 +143,42 @@ public class TemplateConverterTests
         Assert.Contains(protoTemplate.Metrics, m => m.Name == "status" && m.BooleanValue);
     }
 
-    [Fact]
-    public void ToTemplate_ProtoTemplateWithMetrics_ConvertsMetricsCorrectly()
+    [Theory]
+    [InlineData(230.5f, 4.2f)]
+    [InlineData(110.0f, 0.5f)]
+    public void ToTemplate_ProtoTemplateWithMetrics_ConvertsMetricsCorrectly(float voltage, float current)
     {
+        // Test proto template metrics conversion to template
         var protoTemplate = new ProtoTemplate();
         protoTemplate.Metrics.Add(new Payload.Types.Metric
-            { Name = "voltage", Datatype = (uint)DataType.Float, FloatValue = 230.5f });
+            { Name = "voltage", Datatype = (uint)DataType.Float, FloatValue = voltage });
         protoTemplate.Metrics.Add(new Payload.Types.Metric
-            { Name = "current", Datatype = (uint)DataType.Float, FloatValue = 4.2f });
+            { Name = "current", Datatype = (uint)DataType.Float, FloatValue = current });
 
         var template = protoTemplate.ToTemplate();
 
         Assert.NotNull(template);
         Assert.Equal(2, template.Metrics.Count);
         Assert.Contains(template.Metrics,
-            m => m is { Name: "voltage", Value: float fv } && Math.Abs(fv - 230.5f) < 0.001f);
+            m => m is { Name: "voltage", Value: float fv } && Math.Abs(fv - voltage) < 0.001f);
         Assert.Contains(template.Metrics,
-            m => m is { Name: "current", Value: float fc } && Math.Abs(fc - 4.2f) < 0.001f);
+            m => m is { Name: "current", Value: float fc } && Math.Abs(fc - current) < 0.001f);
     }
 
-    [Fact]
-    public void ToProtoTemplate_TemplateWithParameters_ConvertsParametersCorrectly()
+    [Theory]
+    [InlineData("1.5", 100, "automatic")]
+    [InlineData("2.0", 200, "manual")]
+    public void ToProtoTemplate_TemplateWithParameters_ConvertsParametersCorrectly(string version, int thresholdValue,
+        string modeValue)
     {
+        // Test template parameters conversion to proto
         var template = new Template
         {
-            Version = "1.5",
+            Version = version,
             Parameters =
             [
-                new Parameter { Name = "threshold", Type = DataType.Int32, Value = 100 },
-                new Parameter { Name = "mode", Type = DataType.String, Value = "automatic" }
+                new Parameter { Name = "threshold", Type = DataType.Int32, Value = thresholdValue },
+                new Parameter { Name = "mode", Type = DataType.String, Value = modeValue }
             ]
         };
 
@@ -164,31 +186,35 @@ public class TemplateConverterTests
 
         Assert.NotNull(protoTemplate);
         Assert.Equal(2, protoTemplate.Parameters.Count);
-        Assert.Contains(protoTemplate.Parameters, p => p.Name == "threshold" && p.IntValue == 100);
-        Assert.Contains(protoTemplate.Parameters, p => p.Name == "mode" && p.StringValue == "automatic");
+        Assert.Contains(protoTemplate.Parameters, p => p.Name == "threshold" && p.IntValue == thresholdValue);
+        Assert.Contains(protoTemplate.Parameters, p => p.Name == "mode" && p.StringValue == modeValue);
     }
 
-    [Fact]
-    public void ToTemplate_ProtoTemplateWithParameters_ConvertsParametersCorrectly()
+    [Theory]
+    [InlineData(30, "seconds")]
+    [InlineData(60, "minutes")]
+    public void ToTemplate_ProtoTemplateWithParameters_ConvertsParametersCorrectly(int timeoutValue, string unitValue)
     {
+        // Test proto template parameters conversion to template
         var protoTemplate = new ProtoTemplate();
         protoTemplate.Parameters.Add(new ProtoTemplate.Types.Parameter
-            { Name = "timeout", Type = (uint)DataType.Int32, IntValue = 30 });
+            { Name = "timeout", Type = (uint)DataType.Int32, IntValue = (uint)timeoutValue });
         protoTemplate.Parameters.Add(new ProtoTemplate.Types.Parameter
-            { Name = "unit", Type = (uint)DataType.String, StringValue = "seconds" });
+            { Name = "unit", Type = (uint)DataType.String, StringValue = unitValue });
 
         var template = protoTemplate.ToTemplate();
 
         Assert.NotNull(template);
         Assert.NotNull(template.Parameters);
         Assert.Equal(2, template.Parameters.Count);
-        Assert.Contains(template.Parameters, p => p is { Name: "timeout", Value: 30 });
-        Assert.Contains(template.Parameters, p => p.Name == "unit" && p.Value as string == "seconds");
+        Assert.Contains(template.Parameters, p => p is { Name: "timeout", Value: int value } && value == timeoutValue);
+        Assert.Contains(template.Parameters, p => p.Name == "unit" && p.Value as string == unitValue);
     }
 
     [Fact]
     public void ToProtoTemplate_EmptyTemplate_ReturnsEmptyProtoTemplate()
     {
+        // Test empty template conversion to proto
         var template = new Template();
         var protoTemplate = template.ToProtoTemplate();
 
@@ -203,6 +229,7 @@ public class TemplateConverterTests
     [Fact]
     public void ToTemplate_EmptyProtoTemplate_ReturnsTemplateWithDefaultValues()
     {
+        // Test empty proto template conversion to template
         var protoTemplate = new ProtoTemplate();
         var template = protoTemplate.ToTemplate();
 
@@ -217,7 +244,8 @@ public class TemplateConverterTests
     [Fact]
     public void ToProtoTemplate_NullMetrics_ReturnsEmptyMetrics()
     {
-        var template = new Template { Metrics = [] };
+        // Test null metrics conversion to proto
+        var template = new Template { Metrics = null! };
         var protoTemplate = template.ToProtoTemplate();
 
         Assert.NotNull(protoTemplate);
@@ -227,6 +255,7 @@ public class TemplateConverterTests
     [Fact]
     public void ToProtoTemplate_NullParameters_ReturnsEmptyParameters()
     {
+        // Test null parameters conversion to proto
         var template = new Template { Parameters = null };
         var protoTemplate = template.ToProtoTemplate();
 
@@ -234,20 +263,24 @@ public class TemplateConverterTests
         Assert.Empty(protoTemplate.Parameters);
     }
 
-    [Fact]
-    public void ToTemplate_ZeroLengthVersion_ReturnsNullVersion()
+    [Theory]
+    [InlineData("")]
+    public void ToTemplate_ZeroLengthVersion_ReturnsNullVersion(string emptyString)
     {
-        var protoTemplate = new ProtoTemplate { Version = string.Empty };
+        // Test empty string version converts to null
+        var protoTemplate = new ProtoTemplate { Version = emptyString };
         var template = protoTemplate.ToTemplate();
 
         Assert.NotNull(template);
         Assert.Null(template.Version);
     }
 
-    [Fact]
-    public void ToTemplate_ZeroLengthTemplateRef_ReturnsNullTemplateRef()
+    [Theory]
+    [InlineData("")]
+    public void ToTemplate_ZeroLengthTemplateRef_ReturnsNullTemplateRef(string emptyString)
     {
-        var protoTemplate = new ProtoTemplate { TemplateRef = string.Empty };
+        // Test empty string template ref converts to null
+        var protoTemplate = new ProtoTemplate { TemplateRef = emptyString };
         var template = protoTemplate.ToTemplate();
 
         Assert.NotNull(template);

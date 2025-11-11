@@ -6,100 +6,55 @@ namespace SparklerNet.Tests.Core.Topics;
 
 public class SparkplugTopicFactoryTests
 {
-    [Fact]
-    public void CreateSparkplugWildcardTopic_ValidVersion_ReturnsCorrectTopic()
+    [Theory]
+    [InlineData(SparkplugVersion.V300, "spBv1.0/#")]
+    public void CreateSparkplugWildcardTopic_ValidVersion_ReturnsCorrectTopic(SparkplugVersion version,
+        string expectedTopic)
     {
-        const SparkplugVersion version = SparkplugVersion.V300;
+        // Test that a valid version returns the correct wildcard topic
         var result = SparkplugTopicFactory.CreateSparkplugWildcardTopic(version);
-        Assert.Equal("spBv1.0/#", result);
+        Assert.Equal(expectedTopic, result);
     }
 
-    [Fact]
-    public void CreateStateTopic_ValidVersionAndHostId_ReturnsCorrectTopic()
+    [Theory]
+    [InlineData(SparkplugVersion.V300, "host1", "spBv1.0/STATE/host1")]
+    [InlineData(SparkplugVersion.V300, "", "spBv1.0/STATE/")]
+    public void CreateStateTopic_WithVariousHostIds_ReturnsCorrectTopic(SparkplugVersion version, string hostId,
+        string expectedTopic)
     {
-        const SparkplugVersion version = SparkplugVersion.V300;
-        const string hostId = "host1";
+        // Test that state topics are correctly generated with different host IDs
         var result = SparkplugTopicFactory.CreateStateTopic(version, hostId);
-        Assert.Equal("spBv1.0/STATE/host1", result);
+        Assert.Equal(expectedTopic, result);
     }
 
-    [Fact]
-    public void CreateStateTopic_EmptyHostId_ReturnsTopicWithEmptySegment()
+    [Theory]
+    [InlineData(SparkplugVersion.V300, "group1", SparkplugMessageType.NBIRTH, "edgeNode1",
+        "spBv1.0/group1/NBIRTH/edgeNode1")]
+    [InlineData(SparkplugVersion.V300, "group1", SparkplugMessageType.NDATA, "edgeNode1",
+        "spBv1.0/group1/NDATA/edgeNode1")]
+    [InlineData(SparkplugVersion.V300, "", SparkplugMessageType.NBIRTH, "", "spBv1.0//NBIRTH/")]
+    public void CreateEdgeNodeTopic_WithVariousParameters_ReturnsCorrectTopic(SparkplugVersion version, string groupId,
+        SparkplugMessageType messageType, string edgeNodeId, string expectedTopic)
     {
-        const SparkplugVersion version = SparkplugVersion.V300;
-        const string hostId = "";
-        var result = SparkplugTopicFactory.CreateStateTopic(version, hostId);
-        Assert.Equal("spBv1.0/STATE/", result);
-    }
-
-    [Fact]
-    public void CreateEdgeNodeTopic_ValidParameters_ReturnsCorrectTopic()
-    {
-        const SparkplugVersion version = SparkplugVersion.V300;
-        const string groupId = "group1";
-        const SparkplugMessageType messageType = SparkplugMessageType.NBIRTH;
-        const string edgeNodeId = "edgeNode1";
+        // Test that edge node topics are correctly generated with different parameters
         var result = SparkplugTopicFactory.CreateEdgeNodeTopic(version, groupId, messageType, edgeNodeId);
-        Assert.Equal("spBv1.0/group1/NBIRTH/edgeNode1", result);
+        Assert.Equal(expectedTopic, result);
     }
 
-    [Fact]
-    public void CreateEdgeNodeTopic_DifferentMessageType_ReturnsCorrectTopic()
+    [Theory]
+    [InlineData(SparkplugVersion.V300, "group1", SparkplugMessageType.DBIRTH, "edgeNode1", "device1",
+        "spBv1.0/group1/DBIRTH/edgeNode1/device1")]
+    [InlineData(SparkplugVersion.V300, "group1", SparkplugMessageType.DDATA, "edgeNode1", "device1",
+        "spBv1.0/group1/DDATA/edgeNode1/device1")]
+    [InlineData(SparkplugVersion.V300, "", SparkplugMessageType.DBIRTH, "", "", "spBv1.0//DBIRTH//")]
+    public void CreateDeviceTopic_WithVariousParameters_ReturnsCorrectTopic(SparkplugVersion version, string groupId,
+        SparkplugMessageType messageType, string edgeNodeId, string deviceId, string expectedTopic)
     {
-        const SparkplugVersion version = SparkplugVersion.V300;
-        const string groupId = "group1";
-        const SparkplugMessageType messageType = SparkplugMessageType.NDATA;
-        const string edgeNodeId = "edgeNode1";
-        var result = SparkplugTopicFactory.CreateEdgeNodeTopic(version, groupId, messageType, edgeNodeId);
-        Assert.Equal("spBv1.0/group1/NDATA/edgeNode1", result);
-    }
-
-    [Fact]
-    public void CreateEdgeNodeTopic_EmptyGroupOrNodeId_ReturnsTopicWithEmptySegments()
-    {
-        const SparkplugVersion version = SparkplugVersion.V300;
-        const string groupId = "";
-        const SparkplugMessageType messageType = SparkplugMessageType.NBIRTH;
-        const string edgeNodeId = "";
-        var result = SparkplugTopicFactory.CreateEdgeNodeTopic(version, groupId, messageType, edgeNodeId);
-        Assert.Equal("spBv1.0//NBIRTH/", result);
-    }
-
-    [Fact]
-    public void CreateDeviceTopic_ValidParameters_ReturnsCorrectTopic()
-    {
-        const SparkplugVersion version = SparkplugVersion.V300;
-        const string groupId = "group1";
-        const SparkplugMessageType messageType = SparkplugMessageType.DBIRTH;
-        const string edgeNodeId = "edgeNode1";
-        const string deviceId = "device1";
+        // Test that device topics are correctly generated with different parameters
         var result = SparkplugTopicFactory.CreateDeviceTopic(version, groupId, messageType, edgeNodeId, deviceId);
-        Assert.Equal("spBv1.0/group1/DBIRTH/edgeNode1/device1", result);
+        Assert.Equal(expectedTopic, result);
     }
 
-    [Fact]
-    public void CreateDeviceTopic_DifferentMessageType_ReturnsCorrectTopic()
-    {
-        const SparkplugVersion version = SparkplugVersion.V300;
-        const string groupId = "group1";
-        const SparkplugMessageType messageType = SparkplugMessageType.DDATA;
-        const string edgeNodeId = "edgeNode1";
-        const string deviceId = "device1";
-        var result = SparkplugTopicFactory.CreateDeviceTopic(version, groupId, messageType, edgeNodeId, deviceId);
-        Assert.Equal("spBv1.0/group1/DDATA/edgeNode1/device1", result);
-    }
-
-    [Fact]
-    public void CreateDeviceTopic_EmptyGroupNodeOrDeviceId_ReturnsTopicWithEmptySegments()
-    {
-        const SparkplugVersion version = SparkplugVersion.V300;
-        const string groupId = "";
-        const SparkplugMessageType messageType = SparkplugMessageType.DBIRTH;
-        const string edgeNodeId = "";
-        const string deviceId = "";
-        var result = SparkplugTopicFactory.CreateDeviceTopic(version, groupId, messageType, edgeNodeId, deviceId);
-        Assert.Equal("spBv1.0//DBIRTH//", result);
-    }
 
     [Theory]
     [InlineData("group1", "edgeNode1", "device1", SparkplugMessageType.NCMD)]

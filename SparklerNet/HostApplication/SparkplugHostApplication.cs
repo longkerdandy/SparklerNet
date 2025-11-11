@@ -179,6 +179,8 @@ public class SparkplugHostApplication
     {
         _logger.LogInformation("Stopping Sparkplug Host Application {HostApplicationId}",
             _sparkplugOptions.HostApplicationId);
+        
+        // TODO: Handle the cache service
 
         // Publish the STATE(Death Certificate) message.
         await PublishStateMessageAsync(false, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());

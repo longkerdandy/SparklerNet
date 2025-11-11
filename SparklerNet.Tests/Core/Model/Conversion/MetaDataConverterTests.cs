@@ -15,114 +15,93 @@ public class MetaDataConverterTests
     }
 
     [Fact]
-    public void ToProtoMetaData_EmptyMetaData_ReturnsEmptyProtoMetaData()
-    {
-        var metaData = new MetaData();
-        var protoMetaData = metaData.ToProtoMetaData();
-
-        Assert.NotNull(protoMetaData);
-        Assert.False(protoMetaData.IsMultiPart);
-        Assert.Equal(string.Empty, protoMetaData.ContentType);
-        Assert.Equal(0ul, protoMetaData.Size);
-        Assert.Equal(0ul, protoMetaData.Seq);
-        Assert.Equal(string.Empty, protoMetaData.FileName);
-        Assert.Equal(string.Empty, protoMetaData.FileType);
-        Assert.Equal(string.Empty, protoMetaData.Md5);
-    }
-
-    [Fact]
-    public void ToProtoMetaData_BasicMetaData_ConvertsCorrectly()
-    {
-        var metaData = new MetaData
-        {
-            IsMultiPart = true,
-            ContentType = "application/json",
-            Size = 1024,
-            Seq = 42,
-            FileName = "test.json",
-            FileType = "json",
-            Md5 = "abc123def456",
-            Description = "Test description"
-        };
-
-        var protoMetaData = metaData.ToProtoMetaData();
-
-        Assert.NotNull(protoMetaData);
-        Assert.True(protoMetaData.IsMultiPart);
-        Assert.Equal("application/json", protoMetaData.ContentType);
-        Assert.Equal(1024ul, protoMetaData.Size);
-        Assert.Equal(42ul, protoMetaData.Seq);
-        Assert.Equal("test.json", protoMetaData.FileName);
-        Assert.Equal("json", protoMetaData.FileType);
-        Assert.Equal("abc123def456", protoMetaData.Md5);
-        Assert.Equal("Test description", protoMetaData.Description);
-    }
-
-    [Fact]
     public void ToMetaData_NullProtoMetaData_ThrowsArgumentNullException()
     {
         ProtoMetaData protoMetaData = null!;
         Assert.Throws<ArgumentNullException>(() => protoMetaData.ToMetaData());
     }
 
-    [Fact]
-    public void ToMetaData_EmptyProtoMetaData_ReturnsEmptyMetaData()
+    [Theory]
+    [InlineData(false, "", 0ul, 0ul, "", "", "", "")] // Empty MetaData
+    [InlineData(true, "application/json", 1024ul, 42ul, "test.json", "json", "abc123def456",
+        "Test description")] // Basic MetaData
+    public void ToProtoMetaData_ConvertsCorrectly(bool isMultiPart, string contentType, ulong size, ulong seq,
+        string fileName, string fileType, string md5, string description)
     {
-        var protoMetaData = new ProtoMetaData();
-        var metaData = protoMetaData.ToMetaData();
+        var metaData = new MetaData
+        {
+            IsMultiPart = isMultiPart,
+            ContentType = contentType,
+            Size = size,
+            Seq = seq,
+            FileName = fileName,
+            FileType = fileType,
+            Md5 = md5,
+            Description = description
+        };
 
-        Assert.NotNull(metaData);
-        Assert.False(metaData.IsMultiPart);
-        Assert.Equal(string.Empty, metaData.ContentType);
-        Assert.Equal(0ul, metaData.Size);
-        Assert.Equal(0ul, metaData.Seq);
-        Assert.Equal(string.Empty, metaData.FileName);
-        Assert.Equal(string.Empty, metaData.FileType);
-        Assert.Equal(string.Empty, metaData.Md5);
-        Assert.Equal(string.Empty, metaData.Description);
+        var protoMetaData = metaData.ToProtoMetaData();
+
+        Assert.NotNull(protoMetaData);
+        Assert.Equal(isMultiPart, protoMetaData.IsMultiPart);
+        Assert.Equal(contentType, protoMetaData.ContentType);
+        Assert.Equal(size, protoMetaData.Size);
+        Assert.Equal(seq, protoMetaData.Seq);
+        Assert.Equal(fileName, protoMetaData.FileName);
+        Assert.Equal(fileType, protoMetaData.FileType);
+        Assert.Equal(md5, protoMetaData.Md5);
+        Assert.Equal(description, protoMetaData.Description);
     }
 
-    [Fact]
-    public void ToMetaData_BasicProtoMetaData_ConvertsCorrectly()
+    [Theory]
+    [InlineData(false, "", 0ul, 0ul, "", "", "", "")] // Empty ProtoMetaData
+    [InlineData(true, "application/xml", 2048ul, 100ul, "data.xml", "xml", "xyz789pqr012",
+        "XML data description")] // Basic ProtoMetaData
+    public void ToMetaData_ConvertsCorrectly(bool isMultiPart, string contentType, ulong size, ulong seq,
+        string fileName, string fileType, string md5, string description)
     {
         var protoMetaData = new ProtoMetaData
         {
-            IsMultiPart = true,
-            ContentType = "application/xml",
-            Size = 2048,
-            Seq = 100ul,
-            FileName = "data.xml",
-            FileType = "xml",
-            Md5 = "xyz789pqr012",
-            Description = "XML data description"
+            IsMultiPart = isMultiPart,
+            ContentType = contentType,
+            Size = size,
+            Seq = seq,
+            FileName = fileName,
+            FileType = fileType,
+            Md5 = md5,
+            Description = description
         };
 
         var metaData = protoMetaData.ToMetaData();
 
         Assert.NotNull(metaData);
-        Assert.True(metaData.IsMultiPart);
-        Assert.Equal("application/xml", metaData.ContentType);
-        Assert.Equal(2048ul, metaData.Size);
-        Assert.Equal(100ul, metaData.Seq);
-        Assert.Equal("data.xml", metaData.FileName);
-        Assert.Equal("xml", metaData.FileType);
-        Assert.Equal("xyz789pqr012", metaData.Md5);
-        Assert.Equal("XML data description", metaData.Description);
+        Assert.Equal(isMultiPart, metaData.IsMultiPart);
+        Assert.Equal(contentType, metaData.ContentType);
+        Assert.Equal(size, metaData.Size);
+        Assert.Equal(seq, metaData.Seq);
+        Assert.Equal(fileName, metaData.FileName);
+        Assert.Equal(fileType, metaData.FileType);
+        Assert.Equal(md5, metaData.Md5);
+        Assert.Equal(description, metaData.Description);
     }
 
-    [Fact]
-    public void MetaDataRoundTrip_PreservesData()
+    [Theory]
+    [InlineData(true, "application/octet-stream", 4096ul, 255ul, "binary.dat", "dat", "hash123456",
+        "Round trip test data")]
+    [InlineData(false, "text/plain", 100ul, 5ul, "example.txt", "txt", "plainhash", "Simple text file")]
+    public void MetaDataRoundTrip_PreservesData(bool isMultiPart, string contentType, ulong size, ulong seq,
+        string fileName, string fileType, string md5, string description)
     {
         var originalMetaData = new MetaData
         {
-            IsMultiPart = true,
-            ContentType = "application/octet-stream",
-            Size = 4096ul,
-            Seq = 255ul,
-            FileName = "binary.dat",
-            FileType = "dat",
-            Md5 = "hash123456",
-            Description = "Round trip test data"
+            IsMultiPart = isMultiPart,
+            ContentType = contentType,
+            Size = size,
+            Seq = seq,
+            FileName = fileName,
+            FileType = fileType,
+            Md5 = md5,
+            Description = description
         };
 
         // Round trip: MetaData -> ProtoMetaData -> MetaData

@@ -6,154 +6,53 @@ namespace SparklerNet.Tests.Core.Topics;
 
 public class SparkplugTopicParserTests
 {
-    [Fact]
-    public void ParseTopic_RegularMessageWithDevice_ReturnsCorrectValues()
+    [Theory]
+    [InlineData("spBv1.0/group1/NDATA/edgeNode1/device1", SparkplugVersion.V300, "group1", SparkplugMessageType.NDATA,
+        "edgeNode1", "device1", null)]
+    [InlineData("spBv1.0/group1/NDATA/edgeNode1", SparkplugVersion.V300, "group1", SparkplugMessageType.NDATA,
+        "edgeNode1", null, null)]
+    [InlineData("spBv1.0/group1/NBIRTH/edgeNode1", SparkplugVersion.V300, "group1", SparkplugMessageType.NBIRTH,
+        "edgeNode1", null, null)]
+    [InlineData("spBv1.0/group1/NDEATH/edgeNode1", SparkplugVersion.V300, "group1", SparkplugMessageType.NDEATH,
+        "edgeNode1", null, null)]
+    [InlineData("spBv1.0/group1/DBIRTH/edgeNode1/device1", SparkplugVersion.V300, "group1", SparkplugMessageType.DBIRTH,
+        "edgeNode1", "device1", null)]
+    [InlineData("spBv1.0/group1/DDEATH/edgeNode1/device1", SparkplugVersion.V300, "group1", SparkplugMessageType.DDEATH,
+        "edgeNode1", "device1", null)]
+    [InlineData("spBv1.0/group1/NCMD/edgeNode1", SparkplugVersion.V300, "group1", SparkplugMessageType.NCMD,
+        "edgeNode1", null, null)]
+    [InlineData("spBv1.0/group1/DCMD/edgeNode1/device1", SparkplugVersion.V300, "group1", SparkplugMessageType.DCMD,
+        "edgeNode1", "device1", null)]
+    [InlineData("spBv1.0/STATE/host1", SparkplugVersion.V300, null, SparkplugMessageType.STATE, null, null, "host1")]
+    public void ParseTopic_ValidTopics_ReturnsCorrectValues(
+        string topic,
+        SparkplugVersion expectedVersion,
+        string? expectedGroupId,
+        SparkplugMessageType expectedMessageType,
+        string? expectedEdgeNodeId,
+        string? expectedDeviceId,
+        string? expectedHostId)
     {
-        const string topic = "spBv1.0/group1/NDATA/edgeNode1/device1";
+        // Test that valid topics are correctly parsed into their components
         var result = SparkplugTopicParser.ParseTopic(topic);
-        Assert.Equal(SparkplugVersion.V300, result.version);
-        Assert.Equal("group1", result.groupId);
-        Assert.Equal(SparkplugMessageType.NDATA, result.messageType);
-        Assert.Equal("edgeNode1", result.edgeNodeId);
-        Assert.Equal("device1", result.deviceId);
-        Assert.Null(result.hostId);
+        Assert.Equal(expectedVersion, result.version);
+        Assert.Equal(expectedGroupId, result.groupId);
+        Assert.Equal(expectedMessageType, result.messageType);
+        Assert.Equal(expectedEdgeNodeId, result.edgeNodeId);
+        Assert.Equal(expectedDeviceId, result.deviceId);
+        Assert.Equal(expectedHostId, result.hostId);
     }
 
-    [Fact]
-    public void ParseTopic_RegularMessageWithoutDevice_ReturnsCorrectValues()
+    [Theory]
+    [InlineData(null, typeof(ArgumentNullException))]
+    [InlineData("", typeof(NotSupportedException))]
+    [InlineData("invalid-topic-format", typeof(NotSupportedException))]
+    [InlineData("spBv1.0/group1/UNSUPPORTED/edgeNode1", typeof(NotSupportedException))]
+    [InlineData("unsupported-namespace/group1/NDATA/edgeNode1", typeof(NotSupportedException))]
+    public void ParseTopic_InvalidTopics_ThrowsExpectedException(string? topic, Type expectedExceptionType)
     {
-        const string topic = "spBv1.0/group1/NDATA/edgeNode1";
-        var result = SparkplugTopicParser.ParseTopic(topic);
-        Assert.Equal(SparkplugVersion.V300, result.version);
-        Assert.Equal("group1", result.groupId);
-        Assert.Equal(SparkplugMessageType.NDATA, result.messageType);
-        Assert.Equal("edgeNode1", result.edgeNodeId);
-        Assert.Null(result.deviceId);
-        Assert.Null(result.hostId);
-    }
-
-    [Fact]
-    public void ParseTopic_NBirthMessage_ReturnsCorrectValues()
-    {
-        const string topic = "spBv1.0/group1/NBIRTH/edgeNode1";
-        var result = SparkplugTopicParser.ParseTopic(topic);
-        Assert.Equal(SparkplugVersion.V300, result.version);
-        Assert.Equal("group1", result.groupId);
-        Assert.Equal(SparkplugMessageType.NBIRTH, result.messageType);
-        Assert.Equal("edgeNode1", result.edgeNodeId);
-        Assert.Null(result.deviceId);
-        Assert.Null(result.hostId);
-    }
-
-    [Fact]
-    public void ParseTopic_NDeathMessage_ReturnsCorrectValues()
-    {
-        const string topic = "spBv1.0/group1/NDEATH/edgeNode1";
-        var result = SparkplugTopicParser.ParseTopic(topic);
-        Assert.Equal(SparkplugVersion.V300, result.version);
-        Assert.Equal("group1", result.groupId);
-        Assert.Equal(SparkplugMessageType.NDEATH, result.messageType);
-        Assert.Equal("edgeNode1", result.edgeNodeId);
-        Assert.Null(result.deviceId);
-        Assert.Null(result.hostId);
-    }
-
-    [Fact]
-    public void ParseTopic_DBirthMessage_ReturnsCorrectValues()
-    {
-        const string topic = "spBv1.0/group1/DBIRTH/edgeNode1/device1";
-        var result = SparkplugTopicParser.ParseTopic(topic);
-        Assert.Equal(SparkplugVersion.V300, result.version);
-        Assert.Equal("group1", result.groupId);
-        Assert.Equal(SparkplugMessageType.DBIRTH, result.messageType);
-        Assert.Equal("edgeNode1", result.edgeNodeId);
-        Assert.Equal("device1", result.deviceId);
-        Assert.Null(result.hostId);
-    }
-
-    [Fact]
-    public void ParseTopic_DDeathMessage_ReturnsCorrectValues()
-    {
-        const string topic = "spBv1.0/group1/DDEATH/edgeNode1/device1";
-        var result = SparkplugTopicParser.ParseTopic(topic);
-        Assert.Equal(SparkplugVersion.V300, result.version);
-        Assert.Equal("group1", result.groupId);
-        Assert.Equal(SparkplugMessageType.DDEATH, result.messageType);
-        Assert.Equal("edgeNode1", result.edgeNodeId);
-        Assert.Equal("device1", result.deviceId);
-        Assert.Null(result.hostId);
-    }
-
-    [Fact]
-    public void ParseTopic_NCmdMessage_ReturnsCorrectValues()
-    {
-        const string topic = "spBv1.0/group1/NCMD/edgeNode1";
-        var result = SparkplugTopicParser.ParseTopic(topic);
-        Assert.Equal(SparkplugVersion.V300, result.version);
-        Assert.Equal("group1", result.groupId);
-        Assert.Equal(SparkplugMessageType.NCMD, result.messageType);
-        Assert.Equal("edgeNode1", result.edgeNodeId);
-        Assert.Null(result.deviceId);
-        Assert.Null(result.hostId);
-    }
-
-    [Fact]
-    public void ParseTopic_DCmdMessage_ReturnsCorrectValues()
-    {
-        const string topic = "spBv1.0/group1/DCMD/edgeNode1/device1";
-        var result = SparkplugTopicParser.ParseTopic(topic);
-        Assert.Equal(SparkplugVersion.V300, result.version);
-        Assert.Equal("group1", result.groupId);
-        Assert.Equal(SparkplugMessageType.DCMD, result.messageType);
-        Assert.Equal("edgeNode1", result.edgeNodeId);
-        Assert.Equal("device1", result.deviceId);
-        Assert.Null(result.hostId);
-    }
-
-    [Fact]
-    public void ParseTopic_StateMessage_ReturnsCorrectValues()
-    {
-        const string topic = "spBv1.0/STATE/host1";
-        var result = SparkplugTopicParser.ParseTopic(topic);
-        Assert.Equal(SparkplugVersion.V300, result.version);
-        Assert.Null(result.groupId);
-        Assert.Equal(SparkplugMessageType.STATE, result.messageType);
-        Assert.Null(result.edgeNodeId);
-        Assert.Null(result.deviceId);
-        Assert.Equal("host1", result.hostId);
-    }
-
-    [Fact]
-    public void ParseTopic_NullTopic_ThrowsArgumentNullException()
-    {
-        Assert.Throws<ArgumentNullException>(() => SparkplugTopicParser.ParseTopic(null!));
-    }
-
-    [Fact]
-    public void ParseTopic_EmptyTopic_ThrowsNotSupportedException()
-    {
-        Assert.Throws<NotSupportedException>(() => SparkplugTopicParser.ParseTopic(""));
-    }
-
-    [Fact]
-    public void ParseTopic_InvalidFormat_ThrowsNotSupportedException()
-    {
-        const string invalidTopic = "invalid-topic-format";
-        Assert.Throws<NotSupportedException>(() => SparkplugTopicParser.ParseTopic(invalidTopic));
-    }
-
-    [Fact]
-    public void ParseTopic_UnsupportedMessageType_ThrowsNotSupportedException()
-    {
-        const string topicWithUnsupportedType = "spBv1.0/group1/UNSUPPORTED/edgeNode1";
-        Assert.Throws<NotSupportedException>(() => SparkplugTopicParser.ParseTopic(topicWithUnsupportedType));
-    }
-
-    [Fact]
-    public void ParseTopic_UnsupportedNamespace_ThrowsNotSupportedException()
-    {
-        const string topicWithUnsupportedNamespace = "unsupported-namespace/group1/NDATA/edgeNode1";
-        Assert.Throws<NotSupportedException>(() => SparkplugTopicParser.ParseTopic(topicWithUnsupportedNamespace));
+        // Test that invalid topics throw the expected exceptions
+        Assert.Throws(expectedExceptionType, () => SparkplugTopicParser.ParseTopic(topic!));
     }
 
     [Fact]
