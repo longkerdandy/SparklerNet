@@ -6,7 +6,7 @@ namespace SparklerNet.Core.Extensions;
 /// <summary>
 ///     Extension methods for MqttClientOptions
 /// </summary>
-public static class MqttClientOptionsExtension
+public static class MqttClientOptionsExtensions
 {
     /// <summary>
     ///     Retrieves the broker URL from the provided MQTT client options.

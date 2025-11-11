@@ -1,4 +1,4 @@
-﻿using ProtoTemplate = SparklerNet.Core.Protobuf.Payload.Types.Template;
+using ProtoTemplate = SparklerNet.Core.Protobuf.Payload.Types.Template;
 
 namespace SparklerNet.Core.Model.Conversion;
 
@@ -27,7 +27,8 @@ public static class TemplateConverter
         if (template.TemplateRef != null) protoTemplate.TemplateRef = template.TemplateRef;
 
         // Convert metrics using MetricConverter
-        foreach (var metric in template.Metrics) protoTemplate.Metrics.Add(metric.ToProtoMetric());
+        if (template.Metrics != null)
+            foreach (var metric in template.Metrics) protoTemplate.Metrics.Add(metric.ToProtoMetric());
 
         // Convert parameters using ParameterConverter
         // ReSharper disable once InvertIf

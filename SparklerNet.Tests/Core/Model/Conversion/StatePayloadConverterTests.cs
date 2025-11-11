@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Text;
 using System.Text.Json;
 using SparklerNet.Core.Model;
 using SparklerNet.Core.Model.Conversion;
@@ -8,13 +9,15 @@ namespace SparklerNet.Tests.Core.Model.Conversion;
 
 public class StatePayloadConverterTests
 {
-    [Fact]
-    public void SerializeAndDeserialize_SingleSegment_RoundTripPreservesData()
+    [Theory]
+    [InlineData(true, 1620000000L)]
+    [InlineData(false, 1620000001L)]
+    public void SerializeAndDeserialize_RoundTripPreservesData(bool online, long timestamp)
     {
         var originalPayload = new StatePayload
         {
-            Online = true,
-            Timestamp = 1620000000L
+            Online = online,
+            Timestamp = timestamp
         };
         var serialized = StatePayloadConverter.SerializeStatePayload(originalPayload);
         var deserialized = StatePayloadConverter.DeserializeStatePayload(serialized);
@@ -23,13 +26,15 @@ public class StatePayloadConverterTests
         Assert.Equal(originalPayload.Timestamp, deserialized.Timestamp);
     }
 
-    [Fact]
-    public void Deserialize_MultiSegmentSequence_ReturnsCorrectPayload()
+    [Theory]
+    [InlineData(true, 1620000000L)]
+    [InlineData(false, 1620000001L)]
+    public void Deserialize_MultiSegmentSequence_ReturnsCorrectPayload(bool online, long timestamp)
     {
         var originalPayload = new StatePayload
         {
-            Online = false,
-            Timestamp = 1620000001L
+            Online = online,
+            Timestamp = timestamp
         };
         var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(originalPayload);
         var sequence = new ReadOnlySequence<byte>(jsonBytes);
@@ -39,40 +44,34 @@ public class StatePayloadConverterTests
         Assert.Equal(originalPayload.Timestamp, deserialized.Timestamp);
     }
 
-    [Fact]
-    public void SerializeStatePayload_NullPayload_ThrowsArgumentNullException()
+    [Theory]
+    [InlineData(null)]
+    public void SerializeStatePayload_NullPayload_ThrowsArgumentNullException(StatePayload? payload)
     {
-        Assert.Throws<ArgumentNullException>(() => StatePayloadConverter.SerializeStatePayload(null!));
+        // Test that null payload throws ArgumentNullException
+        Assert.Throws<ArgumentNullException>(() => StatePayloadConverter.SerializeStatePayload(payload!));
     }
 
-    [Fact]
-    public void DeserializeStatePayload_EmptySequence_ThrowsException()
+    [Theory]
+    [InlineData(null)] // Empty sequence
+    [InlineData("test")] // Invalid JSON string
+    [InlineData("{ \"online\":true,")] // Partial JSON string
+    public void DeserializeStatePayload_InvalidInput_ThrowsException(string? input)
     {
-        var emptySequence = ReadOnlySequence<byte>.Empty;
-        Assert.Throws<JsonException>(() => StatePayloadConverter.DeserializeStatePayload(emptySequence));
-    }
+        var sequence = input == null
+            ? ReadOnlySequence<byte>.Empty
+            : new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes(input));
 
-    [Fact]
-    public void DeserializeStatePayload_InvalidJson_ThrowsException()
-    {
-        var invalidJsonBytes = "test"u8.ToArray();
-        var sequence = new ReadOnlySequence<byte>(invalidJsonBytes);
+        // All these invalid inputs should throw JsonException
         Assert.Throws<JsonException>(() => StatePayloadConverter.DeserializeStatePayload(sequence));
     }
 
-    [Fact]
-    public void DeserializeStatePayload_PartialJson_ThrowsException()
-    {
-        var partialJsonBytes = """{ "online":true,"""u8.ToArray();
-        var sequence = new ReadOnlySequence<byte>(partialJsonBytes);
-        Assert.Throws<JsonException>(() => StatePayloadConverter.DeserializeStatePayload(sequence));
-    }
-
-    [Fact]
-    public void DeserializeStatePayload_NullJsonString_ThrowsArgumentNullException()
+    [Theory]
+    [InlineData("null")]
+    public void DeserializeStatePayload_NullJsonString_ThrowsArgumentNullException(string nullJsonString)
     {
         // When a JSON string is exactly "null", JsonSerializer.Deserialize returns null
-        var nullJsonBytes = "null"u8.ToArray();
+        var nullJsonBytes = Encoding.UTF8.GetBytes(nullJsonString);
         var sequence = new ReadOnlySequence<byte>(nullJsonBytes);
 
         // Verify DeserializeStatePayload method throws ArgumentNullException when the result is null

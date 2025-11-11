@@ -48,5 +48,12 @@ public interface IMessageOrderingService
     /// <param name="groupId">The group ID of the edge node</param>
     /// <param name="edgeNodeId">The edge node ID</param>
     /// <param name="deviceId">The device ID (optional)</param>
-    void ClearMessageOrderCache(string groupId, string edgeNodeId, string? deviceId);
+    void ClearMessageOrder(string groupId, string edgeNodeId, string? deviceId);
+
+    /// <summary>
+    ///     Retrieves all cached messages and clears the message order cache.
+    ///     This method is useful for accessing any messages that are stored in the cache before the cache is reset or cleared.
+    /// </summary>
+    /// <returns>List of all cached messages prior to cache clearance.</returns>
+    List<SparkplugMessageEventArgs> GetAllMessagesAndClearCache();
 }

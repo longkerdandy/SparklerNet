@@ -1,3 +1,4 @@
+using System.Collections;
 using SparklerNet.Core.Model;
 using SparklerNet.Core.Model.Conversion;
 using Xunit;
@@ -36,126 +37,141 @@ public class MetricConverterTests
     }
 
     [Fact]
-    public void ToProtoMetric_NullMetric_ThrowsArgumentNullException()
+    public void NullInput_ThrowsArgumentNullException()
     {
         Metric metric = null!;
-        Assert.Throws<ArgumentNullException>(() => metric.ToProtoMetric());
-    }
-
-    [Fact]
-    public void ToMetric_NullProtoMetric_ThrowsArgumentNullException()
-    {
         ProtoMetric protoMetric = null!;
+        Assert.Throws<ArgumentNullException>(() => metric.ToProtoMetric());
         Assert.Throws<ArgumentNullException>(() => protoMetric.ToMetric());
     }
 
-    [Fact]
-    public void ToProtoMetric_Int32Value_ReturnsCorrectProtoMetric()
+    [Theory]
+    [InlineData(DataType.Int32, 42, "int32Metric")]
+    [InlineData(DataType.String, "test string", "stringMetric")]
+    [InlineData(DataType.DateTime, 1234567890L, "dateTimeMetric")]
+    [InlineData(DataType.Boolean, true, "boolMetric")]
+    [InlineData(DataType.Float, 3.14f, "floatMetric")]
+    [InlineData(DataType.Double, 2.718, "doubleMetric")]
+    [InlineData(DataType.Int32, null, "nullIntMetric")]
+    public void ToProtoMetric_ReturnsCorrectProtoMetric(DataType dataType, object? value, string metricName)
     {
-        var metric = new Metric { Name = "int32Metric", DataType = DataType.Int32, Value = 42 };
+        var metric = new Metric { Name = metricName, DataType = dataType, Value = value };
         var result = metric.ToProtoMetric();
 
         Assert.NotNull(result);
-        Assert.Equal("int32Metric", result.Name);
-        Assert.Equal((uint)DataType.Int32, result.Datatype);
-        Assert.Equal(42U, result.IntValue);
+        Assert.Equal(metricName, result.Name);
+        Assert.Equal((uint)dataType, result.Datatype);
+        Assert.Equal(value == null, result.IsNull);
+
+        // Validate the corresponding field based on the data type
+        if (value == null) return;
+        // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
+        switch (dataType)
+        {
+            case DataType.Int32 when value is int intValue:
+                Assert.Equal((uint)intValue, result.IntValue);
+                break;
+            case DataType.String when value is string stringValue:
+                Assert.Equal(stringValue, result.StringValue);
+                break;
+            case DataType.DateTime when value is long longValue:
+                Assert.Equal((ulong)longValue, result.LongValue);
+                break;
+            case DataType.Boolean when value is bool boolValue:
+                // Based on MetricConverter implementation, boolean values use the BooleanValue field
+                Assert.Equal(boolValue, result.BooleanValue);
+                break;
+            case DataType.Float when value is float floatValue:
+                Assert.Equal(floatValue, result.FloatValue, 5);
+                break;
+            case DataType.Double when value is double doubleValue:
+                Assert.Equal(doubleValue, result.DoubleValue, 9);
+                break;
+        }
     }
 
-    [Fact]
-    public void ToMetric_Int32Value_ReturnsCorrectMetric()
-    {
-        var protoMetric = new ProtoMetric { Name = "int32Metric", Datatype = (uint)DataType.Int32, IntValue = 42 };
-        var result = protoMetric.ToMetric();
-
-        Assert.NotNull(result);
-        Assert.Equal("int32Metric", result.Name);
-        Assert.Equal(DataType.Int32, result.DataType);
-        Assert.Equal(42, result.Value);
-    }
-
-    [Fact]
-    public void ToProtoMetric_StringValue_ReturnsCorrectProtoMetric()
-    {
-        var metric = new Metric { Name = "stringMetric", DataType = DataType.String, Value = "test string" };
-        var result = metric.ToProtoMetric();
-
-        Assert.NotNull(result);
-        Assert.Equal("stringMetric", result.Name);
-        Assert.Equal((uint)DataType.String, result.Datatype);
-        Assert.Equal("test string", result.StringValue);
-    }
-
-    [Fact]
-    public void ToMetric_StringValue_ReturnsCorrectMetric()
+    [Theory]
+    [InlineData(DataType.Int32, 42, "int32Metric")]
+    [InlineData(DataType.String, "test string", "stringMetric")]
+    [InlineData(DataType.DateTime, 1234567890L, "dateTimeMetric")]
+    [InlineData(DataType.Boolean, true, "boolMetric")]
+    [InlineData(DataType.Float, 3.14f, "floatMetric")]
+    [InlineData(DataType.Double, 2.718, "doubleMetric")]
+    [InlineData(DataType.Int32, null, "nullIntMetric")]
+    public void ToMetric_ReturnsCorrectMetric(DataType dataType, object? expectedValue, string metricName)
     {
         var protoMetric = new ProtoMetric
-            { Name = "stringMetric", Datatype = (uint)DataType.String, StringValue = "test string" };
+        {
+            Name = metricName,
+            Datatype = (uint)dataType,
+            IsNull = expectedValue == null
+        };
+
+        // Set the corresponding field based on the data type
+        if (expectedValue != null)
+            // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
+            switch (dataType)
+            {
+                case DataType.Int32 when expectedValue is int value:
+                    protoMetric.IntValue = (uint)value;
+                    break;
+                case DataType.String when expectedValue is string stringValue:
+                    protoMetric.StringValue = stringValue;
+                    break;
+                case DataType.DateTime when expectedValue is long longValue:
+                    protoMetric.LongValue = (ulong)longValue;
+                    break;
+                case DataType.Boolean when expectedValue is bool boolValue:
+                    // From MetricConverter implementation, boolean values use the BooleanValue field
+                    protoMetric.BooleanValue = boolValue;
+                    break;
+                case DataType.Float when expectedValue is float floatValue:
+                    protoMetric.FloatValue = floatValue;
+                    break;
+                case DataType.Double when expectedValue is double doubleValue:
+                    protoMetric.DoubleValue = doubleValue;
+                    break;
+            }
+
         var result = protoMetric.ToMetric();
 
         Assert.NotNull(result);
-        Assert.Equal("stringMetric", result.Name);
-        Assert.Equal(DataType.String, result.DataType);
-        Assert.Equal("test string", result.Value);
+        Assert.Equal(metricName, result.Name);
+        Assert.Equal(dataType, result.DataType);
+
+        // Use appropriate comparison method
+        switch (expectedValue)
+        {
+            case float expectedFloat when result.Value is float actualFloat:
+                Assert.Equal(expectedFloat, actualFloat, 5);
+                break;
+            case double expectedDouble when result.Value is double actualDouble:
+                Assert.Equal(expectedDouble, actualDouble, 9);
+                break;
+            default:
+                Assert.Equal(expectedValue, result.Value);
+                break;
+        }
     }
 
-    [Fact]
-    public void ToProtoMetric_DateTimeValue_ReturnsCorrectProtoMetric()
+    [Theory]
+    [InlineData(999, "unsupportedMetric")]
+    public void UnsupportedDataType_ThrowsNotSupportedException(int dataTypeCode, string metricName)
     {
-        var metric = new Metric { Name = "dateTimeMetric", DataType = DataType.DateTime, Value = 1234567890L };
-        var result = metric.ToProtoMetric();
-
-        Assert.NotNull(result);
-        Assert.Equal("dateTimeMetric", result.Name);
-        Assert.Equal((uint)DataType.DateTime, result.Datatype);
-        Assert.Equal(1234567890UL, result.LongValue);
-    }
-
-    [Fact]
-    public void ToMetric_DateTimeValue_ReturnsCorrectMetric()
-    {
-        var protoMetric = new ProtoMetric
-            { Name = "dateTimeMetric", Datatype = (uint)DataType.DateTime, LongValue = 1234567890 };
-        var result = protoMetric.ToMetric();
-
-        Assert.NotNull(result);
-        Assert.Equal("dateTimeMetric", result.Name);
-        Assert.Equal(DataType.DateTime, result.DataType);
-        Assert.Equal(1234567890L, result.Value);
-    }
-
-    [Fact]
-    public void ToProtoMetric_NullValue_ReturnsProtoMetricWithIsNullTrue()
-    {
-        var metric = new Metric { Name = "nullMetric", DataType = DataType.Int32, Value = null };
-        var result = metric.ToProtoMetric();
-
-        Assert.NotNull(result);
-        Assert.Equal("nullMetric", result.Name);
-        Assert.Equal((uint)DataType.Int32, result.Datatype);
-        Assert.True(result.IsNull);
-        Assert.Equal(0U, result.IntValue);
-    }
-
-    [Fact]
-    public void ToProtoMetric_UnsupportedDataType_ThrowsNotSupportedException()
-    {
-        var metric = new Metric { Name = "unsupportedMetric", DataType = (DataType)999, Value = "test" };
+        // Test ToProtoMetric
+        var metric = new Metric { Name = metricName, DataType = (DataType)dataTypeCode, Value = "test" };
         Assert.Throws<NotSupportedException>(() => metric.ToProtoMetric());
-    }
 
-    [Fact]
-    public void ToMetric_UnsupportedDataType_ThrowsNotSupportedException()
-    {
-        var protoMetric = new ProtoMetric { Name = "unsupportedMetric", Datatype = 999 };
+        // Test ToMetric
+        var protoMetric = new ProtoMetric { Name = metricName, Datatype = (uint)dataTypeCode };
         Assert.Throws<NotSupportedException>(() => protoMetric.ToMetric());
     }
 
-    [Fact]
-    public void MetricRoundTrip_Int8Array_PreservesData()
+    [Theory]
+    [ClassData(typeof(NumericArrayTestData))]
+    public void MetricRoundTrip_NumericArray_PreservesData(DataType dataType, object arrayValue, string metricName)
     {
-        var originalArray = new sbyte[] { -128, 0, 127 };
-        var originalMetric = new Metric
-            { Name = "int8ArrayMetric", DataType = DataType.Int8Array, Value = originalArray };
+        var originalMetric = new Metric { Name = metricName, DataType = dataType, Value = arrayValue };
 
         var protoMetric = originalMetric.ToProtoMetric();
         var roundTripMetric = protoMetric.ToMetric();
@@ -163,15 +179,43 @@ public class MetricConverterTests
         Assert.NotNull(roundTripMetric);
         Assert.Equal(originalMetric.Name, roundTripMetric.Name);
         Assert.Equal(originalMetric.DataType, roundTripMetric.DataType);
-        Assert.Equal(originalArray, roundTripMetric.Value as sbyte[]);
+
+        // Validate array content based on data type
+        switch (arrayValue)
+        {
+            case sbyte[] sbytes:
+                Assert.Equal(sbytes, roundTripMetric.Value as sbyte[]);
+                break;
+            case byte[] bytes:
+                Assert.Equal(bytes, roundTripMetric.Value as byte[]);
+                break;
+            case short[] shorts:
+                Assert.Equal(shorts, roundTripMetric.Value as short[]);
+                break;
+            case ushort[] ushorts:
+                Assert.Equal(ushorts, roundTripMetric.Value as ushort[]);
+                break;
+            case int[] ints:
+                Assert.Equal(ints, roundTripMetric.Value as int[]);
+                break;
+            case uint[] uints:
+                Assert.Equal(uints, roundTripMetric.Value as uint[]);
+                break;
+            case long[] longs:
+                Assert.Equal(longs, roundTripMetric.Value as long[]);
+                break;
+            case ulong[] ulongs:
+                Assert.Equal(ulongs, roundTripMetric.Value as ulong[]);
+                break;
+        }
     }
 
-    [Fact]
-    public void MetricRoundTrip_UInt8Array_PreservesData()
+    [Theory]
+    [ClassData(typeof(FloatingPointArrayTestData))]
+    public void MetricRoundTrip_FloatingPointArray_PreservesData(DataType dataType, object arrayValue,
+        string metricName)
     {
-        var originalArray = new byte[] { 0, 128, 255 };
-        var originalMetric = new Metric
-            { Name = "uint8ArrayMetric", DataType = DataType.UInt8Array, Value = originalArray };
+        var originalMetric = new Metric { Name = metricName, DataType = dataType, Value = arrayValue };
 
         var protoMetric = originalMetric.ToProtoMetric();
         var roundTripMetric = protoMetric.ToMetric();
@@ -179,15 +223,36 @@ public class MetricConverterTests
         Assert.NotNull(roundTripMetric);
         Assert.Equal(originalMetric.Name, roundTripMetric.Name);
         Assert.Equal(originalMetric.DataType, roundTripMetric.DataType);
-        Assert.Equal(originalArray, roundTripMetric.Value as byte[]);
+
+        // Validate floating point array content using approximate comparison
+        switch (arrayValue)
+        {
+            case float[] floatArray:
+            {
+                var resultArray = roundTripMetric.Value as float[];
+                Assert.NotNull(resultArray);
+                Assert.Equal(floatArray.Length, resultArray.Length);
+                for (var i = 0; i < floatArray.Length; i++)
+                    Assert.Equal(floatArray[i], resultArray[i], 5);
+                break;
+            }
+            case double[] doubleArray:
+            {
+                var resultArray = roundTripMetric.Value as double[];
+                Assert.NotNull(resultArray);
+                Assert.Equal(doubleArray.Length, resultArray.Length);
+                for (var i = 0; i < doubleArray.Length; i++)
+                    Assert.Equal(doubleArray[i], resultArray[i], 9);
+                break;
+            }
+        }
     }
 
-    [Fact]
-    public void MetricRoundTrip_Int16Array_PreservesData()
+    [Theory]
+    [ClassData(typeof(SpecialArrayTestData))]
+    public void MetricRoundTrip_SpecialArray_PreservesData(DataType dataType, object arrayValue, string metricName)
     {
-        var originalArray = new short[] { -32768, 0, 32767 };
-        var originalMetric = new Metric
-            { Name = "int16ArrayMetric", DataType = DataType.Int16Array, Value = originalArray };
+        var originalMetric = new Metric { Name = metricName, DataType = dataType, Value = arrayValue };
 
         var protoMetric = originalMetric.ToProtoMetric();
         var roundTripMetric = protoMetric.ToMetric();
@@ -195,166 +260,73 @@ public class MetricConverterTests
         Assert.NotNull(roundTripMetric);
         Assert.Equal(originalMetric.Name, roundTripMetric.Name);
         Assert.Equal(originalMetric.DataType, roundTripMetric.DataType);
-        Assert.Equal(originalArray, roundTripMetric.Value as short[]);
+
+        // Validate special type array content
+        switch (arrayValue)
+        {
+            case bool[] bools:
+                Assert.Equal(bools, roundTripMetric.Value as bool[]);
+                break;
+            case string[] strings:
+                Assert.Equal(strings, roundTripMetric.Value as string[]);
+                break;
+            case long[] longs when dataType == DataType.DateTimeArray:
+                Assert.Equal(longs, roundTripMetric.Value as long[]);
+                break;
+        }
     }
 
-    [Fact]
-    public void MetricRoundTrip_UInt16Array_PreservesData()
+    // Test data classes
+    private class NumericArrayTestData : IEnumerable<object[]>
     {
-        var originalArray = new ushort[] { 0, 32768, 65535 };
-        var originalMetric = new Metric
-            { Name = "uint16ArrayMetric", DataType = DataType.UInt16Array, Value = originalArray };
+        public IEnumerator<object[]> GetEnumerator()
+        {
+            yield return [DataType.Int8Array, new sbyte[] { -128, 0, 127 }, "int8ArrayMetric"];
+            yield return [DataType.UInt8Array, new byte[] { 0, 128, 255 }, "uint8ArrayMetric"];
+            yield return [DataType.Int16Array, new short[] { -32768, 0, 32767 }, "int16ArrayMetric"];
+            yield return [DataType.UInt16Array, new ushort[] { 0, 32768, 65535 }, "uint16ArrayMetric"];
+            yield return [DataType.Int32Array, new[] { -2147483648, 0, 2147483647 }, "int32ArrayMetric"];
+            yield return [DataType.UInt32Array, new uint[] { 0, 2147483648, 4294967295 }, "uint32ArrayMetric"];
+            yield return
+                [DataType.Int64Array, new[] { -9223372036854775808, 0, 9223372036854775807 }, "int64ArrayMetric"];
+            yield return
+            [
+                DataType.UInt64Array, new ulong[] { 0, 9223372036854775808, 18446744073709551615 }, "uint64ArrayMetric"
+            ];
+        }
 
-        var protoMetric = originalMetric.ToProtoMetric();
-        var roundTripMetric = protoMetric.ToMetric();
-
-        Assert.NotNull(roundTripMetric);
-        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
-        Assert.Equal(originalMetric.DataType, roundTripMetric.DataType);
-        Assert.Equal(originalArray, roundTripMetric.Value as ushort[]);
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
     }
 
-    [Fact]
-    public void MetricRoundTrip_Int32Array_PreservesData()
+    private class FloatingPointArrayTestData : IEnumerable<object[]>
     {
-        var originalArray = new[] { -2147483648, 0, 2147483647 };
-        var originalMetric = new Metric
-            { Name = "int32ArrayMetric", DataType = DataType.Int32Array, Value = originalArray };
+        public IEnumerator<object[]> GetEnumerator()
+        {
+            yield return [DataType.FloatArray, new[] { -1.5f, 0f, 1.5f }, "floatArrayMetric"];
+            yield return [DataType.DoubleArray, new[] { -1.5, 0.0, 1.5 }, "doubleArrayMetric"];
+        }
 
-        var protoMetric = originalMetric.ToProtoMetric();
-        var roundTripMetric = protoMetric.ToMetric();
-
-        Assert.NotNull(roundTripMetric);
-        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
-        Assert.Equal(originalMetric.DataType, roundTripMetric.DataType);
-        Assert.Equal(originalArray, roundTripMetric.Value as int[]);
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
     }
 
-    [Fact]
-    public void MetricRoundTrip_UInt32Array_PreservesData()
+    private class SpecialArrayTestData : IEnumerable<object[]>
     {
-        var originalArray = new uint[] { 0, 2147483648, 4294967295 };
-        var originalMetric = new Metric
-            { Name = "uint32ArrayMetric", DataType = DataType.UInt32Array, Value = originalArray };
+        public IEnumerator<object[]> GetEnumerator()
+        {
+            yield return [DataType.BooleanArray, new[] { true, false, true }, "booleanArrayMetric"];
+            yield return [DataType.StringArray, new[] { "test1", "test2", null, "test4" }, "stringArrayMetric"];
+            yield return [DataType.DateTimeArray, new[] { 0, 1234567890, 9876543210 }, "dateTimeArrayMetric"];
+        }
 
-        var protoMetric = originalMetric.ToProtoMetric();
-        var roundTripMetric = protoMetric.ToMetric();
-
-        Assert.NotNull(roundTripMetric);
-        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
-        Assert.Equal(originalMetric.DataType, roundTripMetric.DataType);
-        Assert.Equal(originalArray, roundTripMetric.Value as uint[]);
-    }
-
-    [Fact]
-    public void MetricRoundTrip_Int64Array_PreservesData()
-    {
-        var originalArray = new[] { -9223372036854775808, 0, 9223372036854775807 };
-        var originalMetric = new Metric
-            { Name = "int64ArrayMetric", DataType = DataType.Int64Array, Value = originalArray };
-
-        var protoMetric = originalMetric.ToProtoMetric();
-        var roundTripMetric = protoMetric.ToMetric();
-
-        Assert.NotNull(roundTripMetric);
-        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
-        Assert.Equal(originalMetric.DataType, roundTripMetric.DataType);
-        Assert.Equal(originalArray, roundTripMetric.Value as long[]);
-    }
-
-    [Fact]
-    public void MetricRoundTrip_UInt64Array_PreservesData()
-    {
-        var originalArray = new ulong[] { 0, 9223372036854775808, 18446744073709551615 };
-        var originalMetric = new Metric
-            { Name = "uint64ArrayMetric", DataType = DataType.UInt64Array, Value = originalArray };
-
-        var protoMetric = originalMetric.ToProtoMetric();
-        var roundTripMetric = protoMetric.ToMetric();
-
-        Assert.NotNull(roundTripMetric);
-        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
-        Assert.Equal(originalMetric.DataType, roundTripMetric.DataType);
-        Assert.Equal(originalArray, roundTripMetric.Value as ulong[]);
-    }
-
-    [Fact]
-    public void MetricRoundTrip_FloatArray_PreservesData()
-    {
-        var originalArray = new[] { -1.5f, 0f, 1.5f };
-        var originalMetric = new Metric
-            { Name = "floatArrayMetric", DataType = DataType.FloatArray, Value = originalArray };
-
-        var protoMetric = originalMetric.ToProtoMetric();
-        var roundTripMetric = protoMetric.ToMetric();
-
-        Assert.NotNull(roundTripMetric);
-        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
-        Assert.Equal(originalMetric.DataType, roundTripMetric.DataType);
-        Assert.Equal(originalArray, roundTripMetric.Value as float[]);
-    }
-
-    [Fact]
-    public void MetricRoundTrip_DoubleArray_PreservesData()
-    {
-        var originalArray = new[] { -1.5, 0.0, 1.5 };
-        var originalMetric = new Metric
-            { Name = "doubleArrayMetric", DataType = DataType.DoubleArray, Value = originalArray };
-
-        var protoMetric = originalMetric.ToProtoMetric();
-        var roundTripMetric = protoMetric.ToMetric();
-
-        Assert.NotNull(roundTripMetric);
-        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
-        Assert.Equal(originalMetric.DataType, roundTripMetric.DataType);
-        Assert.Equal(originalArray, roundTripMetric.Value as double[]);
-    }
-
-    [Fact]
-    public void MetricRoundTrip_BooleanArray_PreservesData()
-    {
-        var originalArray = new[] { true, false, true };
-        var originalMetric = new Metric
-            { Name = "booleanArrayMetric", DataType = DataType.BooleanArray, Value = originalArray };
-
-        var protoMetric = originalMetric.ToProtoMetric();
-        var roundTripMetric = protoMetric.ToMetric();
-
-        Assert.NotNull(roundTripMetric);
-        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
-        Assert.Equal(originalMetric.DataType, roundTripMetric.DataType);
-        Assert.Equal(originalArray, roundTripMetric.Value as bool[]);
-    }
-
-    [Fact]
-    public void MetricRoundTrip_StringArray_PreservesData()
-    {
-        var originalArray = new[] { "test1", "test2", null, "test4" };
-        var originalMetric = new Metric
-            { Name = "stringArrayMetric", DataType = DataType.StringArray, Value = originalArray };
-
-        var protoMetric = originalMetric.ToProtoMetric();
-        var roundTripMetric = protoMetric.ToMetric();
-
-        Assert.NotNull(roundTripMetric);
-        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
-        Assert.Equal(originalMetric.DataType, roundTripMetric.DataType);
-        Assert.Equal(originalArray, roundTripMetric.Value as string[]);
-    }
-
-    [Fact]
-    public void MetricRoundTrip_DateTimeArray_PreservesData()
-    {
-        var originalArray = new[] { 0, 1234567890, 9876543210 };
-        var originalMetric = new Metric
-            { Name = "dateTimeArrayMetric", DataType = DataType.DateTimeArray, Value = originalArray };
-
-        var protoMetric = originalMetric.ToProtoMetric();
-        var roundTripMetric = protoMetric.ToMetric();
-
-        Assert.NotNull(roundTripMetric);
-        Assert.Equal(originalMetric.Name, roundTripMetric.Name);
-        Assert.Equal(originalMetric.DataType, roundTripMetric.DataType);
-        Assert.Equal(originalArray, roundTripMetric.Value as long[]);
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
     }
 }

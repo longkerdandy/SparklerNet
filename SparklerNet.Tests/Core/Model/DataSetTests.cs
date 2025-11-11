@@ -16,99 +16,107 @@ public class DataSetTests
         Assert.Equal(0, dataSet.ColumnCount);
     }
 
-    [Fact]
-    public void AddRow_Throws_Exception_When_RowData_Count_Does_Not_Match_Columns_Count()
+    [Theory]
+    [InlineData(new[] { "Column1" }, 2)] // More values than columns
+    [InlineData(new[] { "Column1", "Column2" }, 1)] // Fewer values than columns
+    public void AddRow_Throws_Exception_When_RowData_Count_Does_Not_Match_Columns_Count(string[] columnsArray,
+        int rowDataCount)
     {
-        var dataSet = new DataSet
-        {
-            Columns = ["Column1", "Column2"]
-        };
-        var rowData = new List<object> { 1, 2, 3 }; // 3 values but only 2 columns
+        var columns = new List<string>(columnsArray);
+        var dataSet = new DataSet { Columns = columns };
+        var rowData = Enumerable.Range(1, rowDataCount).Cast<object>().ToList();
         Assert.Throws<InvalidOperationException>(() => dataSet.AddRow(rowData));
     }
 
-    [Fact]
-    public void AddRow_Adds_Data_Correctly_For_Single_Row()
+    [Theory]
+    [InlineData(new[] { "Column1" }, new object[] { 42 }, 1)]
+    [InlineData(new[] { "Column1", "Column2" }, new object[] { 1, "Test" }, 2)]
+    public void AddRow_Adds_Single_Row_Correctly(string[] columnsArray, object[] rowData, int expectedColumnCount)
     {
-        var dataSet = new DataSet
-        {
-            Columns = ["Column1", "Column2", "Column3"],
-            Types = [DataType.Int32, DataType.String, DataType.Boolean]
-        };
-        var rowData = new List<object> { 10, "Test", true };
-        dataSet.AddRow(rowData);
+        var columns = new List<string>(columnsArray);
+        var dataSet = new DataSet { Columns = columns };
+        dataSet.AddRow(rowData.ToList());
+
         Assert.Equal(1, dataSet.RowCount);
-        Assert.Equal(3, dataSet.ColumnCount);
-        Assert.Contains(10, dataSet.ColumnData["Column1"]);
-        Assert.Contains("Test", dataSet.ColumnData["Column2"]);
-        Assert.Contains(true, dataSet.ColumnData["Column3"]);
+        Assert.Equal(expectedColumnCount, dataSet.ColumnCount);
+
+        // Verify data in each column
+        for (var i = 0; i < columns.Count; i++) Assert.Contains(rowData[i], dataSet.ColumnData[columns[i]]);
     }
 
-    [Fact]
-    public void AddRow_Adds_Multiple_Rows_Correctly()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(5)]
+    public void AddRow_Adds_Multiple_Rows_Correctly(int rowCount)
     {
         var dataSet = new DataSet
         {
             Columns = ["ID", "Name"],
             Types = [DataType.Int32, DataType.String]
         };
-        var row1 = new List<object> { 1, "Alice" };
-        var row2 = new List<object> { 2, "Bob" };
-        var row3 = new List<object> { 3, "Charlie" };
-        dataSet.AddRow(row1);
-        dataSet.AddRow(row2);
-        dataSet.AddRow(row3);
-        Assert.Equal(3, dataSet.RowCount);
-        Assert.Equal([1, 2, 3], dataSet.ColumnData["ID"].Cast<int>().ToList());
-        Assert.Equal(["Alice", "Bob", "Charlie"], dataSet.ColumnData["Name"].Cast<string>().ToList());
+
+        // Add rows
+        for (var i = 1; i <= rowCount; i++) dataSet.AddRow([i, $"Name{i}"]);
+
+        Assert.Equal(rowCount, dataSet.RowCount);
+        Assert.Equal(Enumerable.Range(1, rowCount), dataSet.ColumnData["ID"].Cast<int>());
+        Assert.Equal(Enumerable.Range(1, rowCount).Select(i => $"Name{i}"), dataSet.ColumnData["Name"].Cast<string>());
     }
 
-    [Fact]
-    public void GetRows_Returns_All_Rows_Correctly()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(3)]
+    public void GetRows_Returns_All_Rows_Correctly(int rowCount)
     {
         var dataSet = new DataSet
         {
-            Columns = ["ID", "Name", "Active"],
-            Types = [DataType.Int32, DataType.String, DataType.Boolean]
+            Columns = ["ID", "Name"],
+            Types = [DataType.Int32, DataType.String]
         };
-        dataSet.AddRow([1, "Alice", true]);
-        dataSet.AddRow([2, "Bob", false]);
-        dataSet.AddRow([3, "Charlie", true]);
+
+        // Add rows
+        for (var i = 1; i <= rowCount; i++) dataSet.AddRow([i, $"Name{i}"]);
+
         var rows = dataSet.GetRows().ToList();
-        Assert.Equal(3, rows.Count);
-        Assert.Equal([1, "Alice", true], rows[0]);
-        Assert.Equal([2, "Bob", false], rows[1]);
-        Assert.Equal([3, "Charlie", true], rows[2]);
+        Assert.Equal(rowCount, rows.Count);
+
+        // Verify each row
+        for (var i = 0; i < rowCount; i++)
+        {
+            var expectedId = i + 1;
+            var expectedName = $"Name{expectedId}";
+            Assert.Equal([expectedId, expectedName], rows[i]);
+        }
     }
 
-    [Fact]
-    public void GetRows_Throws_Exception_For_Missing_Column_Data()
+    [Theory]
+    [InlineData(true)] // Missing column data
+    [InlineData(false)] // Index out of range
+    public void GetRows_Throws_Exception_For_InvalidData(bool isMissingColumnData)
     {
         var dataSet = new DataSet
         {
-            Columns = ["Column1", "Column2", "Column3"],
-            ColumnData = new Dictionary<string, List<object>>
+            Columns = ["Column1", "Column2", "Column3"]
+        };
+
+        if (isMissingColumnData)
+            // Missing Column2
+            dataSet.ColumnData = new Dictionary<string, List<object>>
             {
                 { "Column1", [1, 2, 3] },
-                // Column2 is missing
                 { "Column3", [true, false, true] }
-            }
-        };
-        Assert.Throws<InvalidOperationException>(() => dataSet.GetRows().ToList());
-    }
-
-    [Fact]
-    public void GetRows_Throws_Exception_For_Index_Out_Of_Range()
-    {
-        var dataSet = new DataSet
-        {
-            Columns = ["Column1", "Column2"],
-            ColumnData = new Dictionary<string, List<object>>
+            };
+        else
+            // Column2 has fewer values
+            dataSet.ColumnData = new Dictionary<string, List<object>>
             {
-                { "Column1", [1, 2] },
-                { "Column2", ["A"] } // Only one value for Column2
-            }
-        };
+                { "Column1", [1, 2, 3] },
+                { "Column2", ["A"] },
+                { "Column3", [true, false, true] }
+            };
+
         Assert.Throws<InvalidOperationException>(() => dataSet.GetRows().ToList());
     }
 
@@ -120,33 +128,44 @@ public class DataSetTests
         Assert.Empty(rows);
     }
 
-    [Fact]
-    public void GetRows_Uses_Yield_Return_For_Lazy_Evaluation()
+    [Theory]
+    [InlineData(100, 10)] // 100 rows, take first 10
+    [InlineData(50, 5)] // 50 rows, take first 5
+    public void GetRows_Uses_Yield_Return_For_Lazy_Evaluation(int totalRows, int takeRows)
     {
         var dataSet = new DataSet
         {
             Columns = ["Column1"],
             Types = [DataType.Int32]
         };
-        // Add 100 rows to test lazy evaluation
-        for (var i = 0; i < 100; i++) dataSet.AddRow([i]);
-        // Only take the first 10 rows without listing all
-        var rows = dataSet.GetRows().Take(10).ToList();
-        Assert.Equal(10, rows.Count);
-        for (var i = 0; i < 10; i++) Assert.Equal([i], rows[i]);
+
+        // Add rows
+        for (var i = 0; i < totalRows; i++) dataSet.AddRow([i]);
+
+        // Only take the specified number of rows
+        var rows = dataSet.GetRows().Take(takeRows).ToList();
+        Assert.Equal(takeRows, rows.Count);
+
+        // Verify data
+        for (var i = 0; i < takeRows; i++) Assert.Equal([i], rows[i]);
     }
 
-    [Fact]
-    public void RowCount_Returns_Correct_Value_With_TryGetValue()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(3)]
+    [InlineData(5)]
+    public void RowCount_Returns_Correct_Value_With_TryGetValue(int expectedRowCount)
     {
         var dataSet = new DataSet
         {
             Columns = ["Column1", "Column2"]
-            // ColumnData intentionally isn't initialized with Column1 to test TryGetValue
         };
+
         Assert.Equal(0, dataSet.RowCount);
-        // Add data to Column1
-        dataSet.ColumnData["Column1"] = [1, 2, 3];
-        Assert.Equal(3, dataSet.RowCount);
+
+        // Add data to Column1 with the specified row count
+        if (expectedRowCount <= 0) return;
+        dataSet.ColumnData["Column1"] = Enumerable.Range(1, expectedRowCount).Cast<object>().ToList();
+        Assert.Equal(expectedRowCount, dataSet.RowCount);
     }
 }

@@ -69,70 +69,34 @@ public class PayloadConverterTests
         }
     }
 
-    [Fact]
-    public void ToProtoPayload_NullPayload_ThrowsArgumentNullException()
+    [Theory]
+    [InlineData(true)] // Test null Payload to ProtoPayload
+    [InlineData(false)] // Test null ProtoPayload to Payload
+    public void NullInput_ThrowsArgumentNullException(bool isPayloadTest)
     {
-        Payload payload = null!;
-        Assert.Throws<ArgumentNullException>(() => payload.ToProtoPayload());
-    }
-
-    [Fact]
-    public void ToPayload_NullProtoPayload_ThrowsArgumentNullException()
-    {
-        ProtoPayload protoPayload = null!;
-        Assert.Throws<ArgumentNullException>(() => protoPayload.ToPayload());
-    }
-
-    [Fact]
-    public void ToProtoPayload_EmptyPayload_CreatesProtoPayloadWithDefaultValues()
-    {
-        var payload = new Payload
+        if (isPayloadTest)
         {
-            Timestamp = 0,
-            Seq = 0,
-            Metrics = [],
-            Body = null
-        };
-
-        var protoPayload = payload.ToProtoPayload();
-
-        Assert.NotNull(protoPayload);
-        Assert.Equal(0UL, protoPayload.Timestamp);
-        Assert.Equal(0UL, protoPayload.Seq);
-        Assert.Empty(protoPayload.Metrics);
-        // Check Body handling logic - may return default value instead of null
-        Assert.NotNull(protoPayload.Body);
-        Assert.Empty(protoPayload.Body.ToByteArray());
-    }
-
-    [Fact]
-    public void ToPayload_EmptyProtoPayload_CreatesPayloadWithDefaultValues()
-    {
-        var protoPayload = new ProtoPayload
+            Payload payload = null!;
+            Assert.Throws<ArgumentNullException>(() => payload.ToProtoPayload());
+        }
+        else
         {
-            Timestamp = 0,
-            Seq = 0
-        };
-        // protoPayload.Metrics is already empty by default
-        // protoPayload.Body is already null by default
-
-        var payload = protoPayload.ToPayload();
-
-        Assert.NotNull(payload);
-        Assert.Equal(0L, payload.Timestamp);
-        Assert.Equal(0, payload.Seq);
-        Assert.Empty(payload.Metrics);
-        Assert.Null(payload.Body);
+            ProtoPayload protoPayload = null!;
+            Assert.Throws<ArgumentNullException>(() => protoPayload.ToPayload());
+        }
     }
 
-    [Fact]
-    public void PayloadRoundTrip_WithEmptyBody_PreservesData()
+    [Theory]
+    [InlineData(1620000000L, 42, new byte[] { 1, 2, 3, 4, 5 }, false)] // With the normal body
+    [InlineData(1620000000L, 42, new byte[0], true)] // With the empty body
+    public void PayloadRoundTrip_BodyHandling_PreservesData(long timestamp, int seq, byte[] body,
+        bool expectNullBodyAfterRoundTrip)
     {
         var originalPayload = new Payload
         {
-            Timestamp = 1620000000L,
-            Seq = 42,
-            Body = [],
+            Timestamp = timestamp,
+            Seq = seq,
+            Body = body,
             Metrics = []
         };
 
@@ -142,16 +106,28 @@ public class PayloadConverterTests
         Assert.NotNull(roundTripPayload);
         Assert.Equal(originalPayload.Timestamp, roundTripPayload.Timestamp);
         Assert.Equal(originalPayload.Seq, roundTripPayload.Seq);
-        // Check empty array handling - may convert to null based on implementation
-        Assert.Null(roundTripPayload.Body);
         Assert.Empty(roundTripPayload.Metrics);
+
+        if (expectNullBodyAfterRoundTrip)
+        {
+            Assert.Null(roundTripPayload.Body);
+        }
+        else
+        {
+            Assert.NotNull(roundTripPayload.Body);
+            Assert.Equal(originalPayload.Body.Length, roundTripPayload.Body.Length);
+            for (var i = 0; i < originalPayload.Body.Length; i++)
+                Assert.Equal(originalPayload.Body[i], roundTripPayload.Body[i]);
+        }
     }
 
-    [Fact]
-    public void PayloadRoundTrip_WithLargeBody_PreservesData()
+    [Theory]
+    [InlineData(1024, 100)] // Large body with a sample verification step
+    [InlineData(2048, 200)] // Even larger body with a different verification step
+    public void PayloadRoundTrip_LargeBody_PreservesData(int bodySize, int verificationStep)
     {
         // Create a larger byte array
-        var largeBody = new byte[1024];
+        var largeBody = new byte[bodySize];
         for (var i = 0; i < largeBody.Length; i++) largeBody[i] = (byte)(i % 256);
 
         var originalPayload = new Payload
@@ -170,8 +146,54 @@ public class PayloadConverterTests
         Assert.Equal(originalPayload.Seq, roundTripPayload.Seq);
         Assert.NotNull(roundTripPayload.Body);
         Assert.Equal(originalPayload.Body.Length, roundTripPayload.Body.Length);
-        // Verify some bytes to ensure integrity
-        for (var i = 0; i < originalPayload.Body.Length; i += 100)
+
+        // Verify selected bytes to ensure integrity
+        for (var i = 0; i < originalPayload.Body.Length; i += verificationStep)
             Assert.Equal(originalPayload.Body[i], roundTripPayload.Body[i]);
+    }
+
+    [Theory]
+    [InlineData(true)] // Test Payload to ProtoPayload with default values
+    [InlineData(false)] // Test ProtoPayload to Payload with default values
+    public void DefaultValues_Conversion_PreservesData(bool isPayloadToProtoTest)
+    {
+        if (isPayloadToProtoTest)
+        {
+            var payload = new Payload
+            {
+                Timestamp = 0,
+                Seq = 0,
+                Metrics = [],
+                Body = null
+            };
+
+            var protoPayload = payload.ToProtoPayload();
+
+            Assert.NotNull(protoPayload);
+            Assert.Equal(0UL, protoPayload.Timestamp);
+            Assert.Equal(0UL, protoPayload.Seq);
+            Assert.Empty(protoPayload.Metrics);
+            // Check Body handling logic - may return the default value instead of null
+            Assert.NotNull(protoPayload.Body);
+            Assert.Empty(protoPayload.Body.ToByteArray());
+        }
+        else
+        {
+            var protoPayload = new ProtoPayload
+            {
+                Timestamp = 0,
+                Seq = 0
+            };
+            // protoPayload.Metrics is already empty by default
+            // protoPayload.Body is already null by default
+
+            var payload = protoPayload.ToPayload();
+
+            Assert.NotNull(payload);
+            Assert.Equal(0L, payload.Timestamp);
+            Assert.Equal(0, payload.Seq);
+            Assert.Empty(payload.Metrics);
+            Assert.Null(payload.Body);
+        }
     }
 }
