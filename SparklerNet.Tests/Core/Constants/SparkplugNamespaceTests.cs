@@ -41,8 +41,8 @@ public class SparkplugNamespaceTests
         var exception = Assert.Throws<ArgumentNullException>(() =>
         {
             // This is an explicit test for null handling
-            // ReSharper disable once - AssignNullToNotNullAttribute
-            // ReSharper disable once - ReturnValueOfPureMethodIsNotUsed
+            // ReSharper disable once AssignNullToNotNullAttribute
+            // ReSharper disable once ReturnValueOfPureMethodIsNotUsed
             SparkplugNamespace.NamespaceElementRegex().IsMatch(null!);
         });
         // Verify the exception message contains information about the null parameter

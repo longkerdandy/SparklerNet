@@ -65,7 +65,7 @@ public class PropertyConverterTests
         Assert.False(result.IsNull);
 
         // Verify the appropriate value based on the data type
-        // ReSharper disable once - SwitchStatementMissingSomeEnumCasesNoDefault
+        // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
         switch (dataType)
         {
             case DataType.Int32:
@@ -149,7 +149,7 @@ public class PropertyConverterTests
         };
 
         // Set the appropriate value based on data type
-        // ReSharper disable once - SwitchStatementMissingSomeEnumCasesNoDefault
+        // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
         switch (dataType)
         {
             case DataType.Int32:

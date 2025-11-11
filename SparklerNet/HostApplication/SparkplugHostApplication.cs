@@ -266,7 +266,7 @@ public class SparkplugHostApplication
             _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId);
         _sparkplugOptions.Subscriptions.RemoveAll(topicFilter => topicFilter.Topic == stateTopic);
 
-        // Add the default Sparkplug wildcard subscription if the subscriptions' option is empty.
+        // Add the default Sparkplug wildcard subscription if the subscriptions option is empty.
         if (_sparkplugOptions.Subscriptions.Count == 0)
         {
             var spBTopic = SparkplugTopicFactory.CreateSparkplugWildcardTopic(_sparkplugOptions.Version);

@@ -155,7 +155,7 @@ public class MessageOrderingService : IMessageOrderingService
     ///     timeout
     /// </summary>
     /// <param name="state">The timer key that identifies the edge node/device combination</param>
-    // ReSharper disable once AsyncVoidMethod - Required for the timer callback pattern
+    // ReSharper disable once AsyncVoidMethod Required for the timer callback pattern
     private async void OnReorderTimeout(object? state)
     {
         if (state is not string timerKey) return;
@@ -370,7 +370,7 @@ public class MessageOrderingService : IMessageOrderingService
         _cachedSeqKeys.TryAdd(seqKey, null);
 
         // Update or remove pending messages cache and handle timer accordingly
-        // ReSharper disable once - ConvertIfStatementToSwitchStatement
+        // ReSharper disable once ConvertIfStatementToSwitchStatement
         if (pendingMessages.Count > 0 && result.Count > 0)
         {
             // Still have pending messages and size changed, update cache and reset timer
