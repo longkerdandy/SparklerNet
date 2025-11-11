@@ -47,10 +47,9 @@ public class SparkplugHostApplication
     /// </summary>
     /// <param name="mqttOptions">The MQTT Client Options.</param>
     /// <param name="sparkplugOptions">The Sparkplug Client Options.</param>
-    /// <param name="memoryCache">The Memory Cache.</param>
     /// <param name="loggerFactory">The Logger Factory.</param>
-    public SparkplugHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions,
-        IMemoryCache memoryCache, ILoggerFactory loggerFactory)
+    public SparkplugHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions, 
+        ILoggerFactory loggerFactory)
     {
         // Validate sparkplugOptions
         SparkplugNamespace.ValidateNamespaceElement(sparkplugOptions.HostApplicationId,
@@ -58,8 +57,9 @@ public class SparkplugHostApplication
 
         _mqttOptions = mqttOptions;
         _sparkplugOptions = sparkplugOptions;
-        _logger = loggerFactory.CreateLogger<SparkplugHostApplication>();
+        var memoryCache = new MemoryCache(new MemoryCacheOptions());
         _msgOrderingService = new MessageOrderingService(memoryCache, _sparkplugOptions, loggerFactory);
+        _logger = loggerFactory.CreateLogger<SparkplugHostApplication>();
 
         // Create a new MQTT client.
         var factory = new MqttClientFactory();
@@ -179,12 +179,17 @@ public class SparkplugHostApplication
     {
         _logger.LogInformation("Stopping Sparkplug Host Application {HostApplicationId}",
             _sparkplugOptions.HostApplicationId);
-        
-        // TODO: Handle the cache service
 
         // Publish the STATE(Death Certificate) message.
         await PublishStateMessageAsync(false, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         await MqttClient.DisconnectAsync();
+
+        // If the ProcessDisorderedMessages option is enabled, clear the cache and process pending messages
+        if (_sparkplugOptions.EnableMessageOrdering)
+        {
+            var pendingMessages = _msgOrderingService.GetAllMessagesAndClearCache();
+            await HandlePendingMessages(pendingMessages);
+        }
 
         _logger.LogInformation("Successfully stopped Sparkplug Host Application {HostApplicationId}.",
             _sparkplugOptions.HostApplicationId);
@@ -261,7 +266,7 @@ public class SparkplugHostApplication
             _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId);
         _sparkplugOptions.Subscriptions.RemoveAll(topicFilter => topicFilter.Topic == stateTopic);
 
-        // Add the default Sparkplug wildcard subscription if the subscriptions option is empty.
+        // Add the default Sparkplug wildcard subscription if the subscriptions' option is empty.
         if (_sparkplugOptions.Subscriptions.Count == 0)
         {
             var spBTopic = SparkplugTopicFactory.CreateSparkplugWildcardTopic(_sparkplugOptions.Version);
@@ -484,7 +489,7 @@ public class SparkplugHostApplication
     {
         if (_sparkplugOptions.EnableMessageOrdering)
             // Clear message order cache for the edge node or device
-            _msgOrderingService.ClearMessageOrderCache(message.GroupId, message.EdgeNodeId, message.DeviceId);
+            _msgOrderingService.ClearMessageOrder(message.GroupId, message.EdgeNodeId, message.DeviceId);
 
         try
         {

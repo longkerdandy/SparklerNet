@@ -223,7 +223,7 @@ public class MessageOrderingServiceTests
         _service.ProcessMessageOrder(message1);
         _service.ProcessMessageOrder(message3);
 
-        _service.ClearMessageOrderCache("Group1", "Edge1", "Device1");
+        _service.ClearMessageOrder("Group1", "Edge1", "Device1");
         var message2 = CreateMessageEventArgs(2); // Should not process message3 now
         var result2 = _service.ProcessMessageOrder(message2);
 
@@ -369,6 +369,82 @@ public class MessageOrderingServiceTests
         Assert.Same(duplicateMessage3, result2[1]); // Should use the new duplicate message, not the original
     }
 
+    [Fact]
+    public void GetAllMessagesAndClearCache_ShouldReturnAllCachedMessagesAndClearCache()
+    {
+        // Create messages with an out-of-order sequence to generate cached messages
+        var message1 = CreateMessageEventArgs(1);
+        var message3 = CreateMessageEventArgs(3); // Will be cached
+        var message5 = CreateMessageEventArgs(5); // Will be cached
+
+        // Process messages to create a cached state
+        _service.ProcessMessageOrder(message1);
+        _service.ProcessMessageOrder(message3);
+        _service.ProcessMessageOrder(message5);
+
+        // Get all messages and clear the cache
+        var result = _service.GetAllMessagesAndClearCache();
+
+        // Verify all cached messages are returned
+        Assert.Equal(2, result.Count);
+        
+        // Verify the returned messages have the correct sequence numbers
+        var sequenceNumbers = result.Select(m => m.Payload.Seq).ToList();
+        Assert.Contains(3, sequenceNumbers);
+        Assert.Contains(5, sequenceNumbers);
+
+        // Verify cache is cleared by checking that processing a message with sequence 2
+        // doesn't trigger processing of previously cached messages
+        var message2 = CreateMessageEventArgs(2);
+        var resultAfterClear = _service.ProcessMessageOrder(message2);
+        
+        // Only message 2 should be processed, cached messages (3 and 5) should be gone
+        Assert.Single(resultAfterClear);
+        Assert.Equal(2, resultAfterClear[0].Payload.Seq);
+    }
+
+    [Fact]
+    public void GetAllMessagesAndClearCache_ShouldReturnEmptyList_WhenNoMessagesCached()
+    {
+        // No messages processed before calling the method
+        
+        // Get all messages and clear the cache
+        var result = _service.GetAllMessagesAndClearCache();
+        
+        // Verify empty list is returned
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void GetAllMessagesAndClearCache_ShouldClearAllDataStructures()
+    {
+        // Create messages with an out-of-order sequence to generate cached messages and timers
+        var message1 = CreateMessageEventArgs(1);
+        var message3 = CreateMessageEventArgs(3); // Will be cached and create a timer
+        
+        _service.ProcessMessageOrder(message1);
+        _service.ProcessMessageOrder(message3);
+        
+        // Get all messages and clear the cache
+        _service.GetAllMessagesAndClearCache();
+        
+        // Create new messages with same sequence numbers
+        var newMessage1 = CreateMessageEventArgs(1);
+        var newMessage2 = CreateMessageEventArgs(2);
+        
+        // Process new messages
+        var result1 = _service.ProcessMessageOrder(newMessage1);
+        var result2 = _service.ProcessMessageOrder(newMessage2);
+        
+        // The new sequence should start fresh - message1 should be processed normally,
+        // and message2 should be processed as consecutive (not triggering any old cached messages)
+        Assert.Single(result1);
+        Assert.Equal(1, result1[0].Payload.Seq);
+        Assert.Single(result2);
+        Assert.Equal(2, result2[0].Payload.Seq);
+        Assert.True(result2[0].IsSeqConsecutive);
+    }
+    
     private static SparkplugMessageEventArgs CreateMessageEventArgs(int sequenceNumber)
     {
         // Create payload with specified sequence number

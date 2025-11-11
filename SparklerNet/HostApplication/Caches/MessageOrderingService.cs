@@ -18,6 +18,11 @@ public class MessageOrderingService : IMessageOrderingService
     private const string PendingKeyPrefix = "sparkplug:pending:"; // Prefix for the pending messages cache keys
     private const int SequenceNumberRange = 256; // Valid sequence number range (0-255) as defined in Sparkplug spec
     private readonly IMemoryCache _cache; // In-memory cache for storing sequence states and pending messages
+
+    // Collection to track all cache keys created by this service
+    private readonly ConcurrentDictionary<string, object?> _cachedPendingKeys = new();
+    private readonly ConcurrentDictionary<string, object?> _cachedSeqKeys = new();
+
     private readonly ILogger<MessageOrderingService> _logger; // Logger for the service
     private readonly SparkplugClientOptions _options; // Configuration options for the service
 
@@ -50,13 +55,7 @@ public class MessageOrderingService : IMessageOrderingService
     /// </summary>
     public PendingMessagesCallback? OnPendingMessages { get; set; }
 
-    /// <summary>
-    ///     Processes a message in the correct order, handling both continuous and non-continuous sequences
-    ///     Messages with continuous sequence numbers are processed immediately
-    ///     Messages with gaps in sequence are cached for later processing when the gap is filled
-    /// </summary>
-    /// <param name="message">The message context to process</param>
-    /// <returns>List of messages that can be processed (current message if continuous and any continuous pending messages)</returns>
+    /// <inheritdoc />
     public List<SparkplugMessageEventArgs> ProcessMessageOrder(SparkplugMessageEventArgs message)
     {
         ArgumentNullException.ThrowIfNull(message);
@@ -67,7 +66,7 @@ public class MessageOrderingService : IMessageOrderingService
 
         var result = new List<SparkplugMessageEventArgs>();
         // Use fine-grained lock to ensure thread safety for this specific device/node
-        lock (GetLockObject(null, message.GroupId, message.EdgeNodeId, message.DeviceId))
+        lock (GetLockObject(message.GroupId, message.EdgeNodeId, message.DeviceId))
         {
             // Check if the sequence is continuous with the last processed message
             if (UpdateSequenceNumber(message))
@@ -93,14 +92,8 @@ public class MessageOrderingService : IMessageOrderingService
         return result;
     }
 
-    /// <summary>
-    ///     Clears the sequence cache and pending messages for a specific edge node or device
-    ///     Also cleans up any associated timer resources
-    /// </summary>
-    /// <param name="groupId">The group ID of the edge node</param>
-    /// <param name="edgeNodeId">The edge node ID</param>
-    /// <param name="deviceId">The device ID (optional)</param>
-    public void ClearMessageOrderCache(string groupId, string edgeNodeId, string? deviceId)
+    /// <inheritdoc />
+    public void ClearMessageOrder(string groupId, string edgeNodeId, string? deviceId)
     {
         // Build all required cache keys
         var seqKey = BuildCacheKey(SequenceKeyPrefix, groupId, edgeNodeId, deviceId);
@@ -108,14 +101,53 @@ public class MessageOrderingService : IMessageOrderingService
         var timerKey = BuildCacheKey(null, groupId, edgeNodeId, deviceId);
 
         // Use lock to ensure thread safety during cache and timer cleanup
-        lock (GetLockObject(null, groupId, edgeNodeId, deviceId))
+        lock (GetLockObject(groupId, edgeNodeId, deviceId))
         {
             // Remove cached items and dispose timer if it exists
             _cache.Remove(seqKey);
             _cache.Remove(pendingKey);
+            _cachedSeqKeys.TryRemove(seqKey, out _);
+            _cachedPendingKeys.TryRemove(pendingKey, out _);
             if (_reorderTimers.TryRemove(timerKey, out var timer))
                 timer.Dispose();
         }
+    }
+
+    /// <inheritdoc />
+    [SuppressMessage("ReSharper", "InconsistentlySynchronizedField")]
+    public List<SparkplugMessageEventArgs> GetAllMessagesAndClearCache()
+    {
+        // Dispose all reorder timers to prevent callbacks during cache clearing
+        var timerKeys = _reorderTimers.Keys.ToList();
+        foreach (var timerKey in timerKeys)
+            if (_reorderTimers.TryRemove(timerKey, out var timer))
+                timer.Dispose();
+
+        // Get all pending keys from the cache, clear the pending messages cache
+        var result = new List<SparkplugMessageEventArgs>();
+        var pendingKeys = _cachedPendingKeys.Keys.ToList();
+        foreach (var pendingKey in pendingKeys)
+        {
+            // Get pending messages from the cache if available
+            if (!_cache.TryGetValue(pendingKey, out SortedDictionary<int, SparkplugMessageEventArgs>? pendingMessages)
+                || pendingMessages == null) continue;
+
+            // Add all pending messages to the result list
+            result.AddRange(pendingMessages.Values);
+
+            // Remove the pending messages from the cache
+            _cache.Remove(pendingKey);
+        }
+
+        // Clear the pending keys cache
+        _cachedPendingKeys.Clear();
+
+        // Clear the sequence number cache and the sequence keys cache
+        var seqKeys = _cachedSeqKeys.Keys.ToList();
+        foreach (var seqKey in seqKeys) _cache.Remove(seqKey);
+        _cachedSeqKeys.Clear();
+
+        return result;
     }
 
     /// <summary>
@@ -123,7 +155,7 @@ public class MessageOrderingService : IMessageOrderingService
     ///     timeout
     /// </summary>
     /// <param name="state">The timer key that identifies the edge node/device combination</param>
-    // ReSharper disable once AsyncVoidMethod - Required for timer callback pattern
+    // ReSharper disable once AsyncVoidMethod - Required for the timer callback pattern
     private async void OnReorderTimeout(object? state)
     {
         if (state is not string timerKey) return;
@@ -139,7 +171,7 @@ public class MessageOrderingService : IMessageOrderingService
         List<SparkplugMessageEventArgs> pendingMessages;
 
         // Use lock to ensure thread safety and prevent race conditions with concurrent message processing
-        lock (GetLockObject(null, groupId, edgeNodeId, deviceId))
+        lock (GetLockObject(groupId, edgeNodeId, deviceId))
         {
             // Always remove and dispose the timer to prevent duplicate callbacks
             if (_reorderTimers.TryRemove(timerKey, out var timer)) timer.Dispose();
@@ -183,14 +215,13 @@ public class MessageOrderingService : IMessageOrderingService
     ///     Gets a lock object for the specified context from the reorder locks dictionary
     ///     Ensures thread safety for operations on a specific device/node combination
     /// </summary>
-    /// <param name="prefix">The prefix to use for the key (can be null)</param>
     /// <param name="groupId">The group ID part of the key</param>
     /// <param name="edgeNodeId">The edge node ID part of the key</param>
     /// <param name="deviceId">The device ID part of the key (optional)</param>
-    /// <returns>The lock object for the specified context</returns>
-    private object GetLockObject(string? prefix, string groupId, string edgeNodeId, string? deviceId)
+    /// <returns>The lock object for the specified EdgeNode/Device</returns>
+    private object GetLockObject(string groupId, string edgeNodeId, string? deviceId)
     {
-        var key = BuildCacheKey(prefix, groupId, edgeNodeId, deviceId);
+        var key = BuildCacheKey(null, groupId, edgeNodeId, deviceId);
         return _reorderLocks.GetOrAdd(key, _ => new object());
     }
 
@@ -216,6 +247,7 @@ public class MessageOrderingService : IMessageOrderingService
 
         // Update the cache with the current sequence number
         _cache.Set(cacheKey, message.Payload.Seq, CreateSequenceCacheEntryOptions());
+        _cachedSeqKeys.TryAdd(cacheKey, null);
 
         return true;
     }
@@ -245,6 +277,7 @@ public class MessageOrderingService : IMessageOrderingService
 
         // Cache the updated pending messages
         _cache.Set(pendingKey, pendingMessages);
+        _cachedPendingKeys.TryAdd(pendingKey, null);
         _logger.LogDebug(
             "{MessageType} message has been cached due to sequence disorder: Group={Group}, Node={Node}, Device={Device}, Seq={Seq}",
             message.MessageType, message.GroupId, message.EdgeNodeId, message.DeviceId ?? "<none>",
@@ -334,6 +367,7 @@ public class MessageOrderingService : IMessageOrderingService
 
         // Update the cache with the new sequence after processing all continuous messages
         _cache.Set(seqKey, currentSeq, CreateSequenceCacheEntryOptions());
+        _cachedSeqKeys.TryAdd(seqKey, null);
 
         // Update or remove pending messages cache and handle timer accordingly
         // ReSharper disable once - ConvertIfStatementToSwitchStatement
@@ -353,6 +387,7 @@ public class MessageOrderingService : IMessageOrderingService
         {
             // No more pending messages, clean up cache and timer
             _cache.Remove(pendingKey);
+            _cachedPendingKeys.TryRemove(pendingKey, out _);
             if (_reorderTimers.TryRemove(timerKey, out var timer))
                 timer.Dispose();
         }
@@ -366,11 +401,21 @@ public class MessageOrderingService : IMessageOrderingService
     /// <returns>Configured MemoryCacheEntryOptions with sliding expiration if specified in options</returns>
     private MemoryCacheEntryOptions CreateSequenceCacheEntryOptions()
     {
-        var options = new MemoryCacheEntryOptions();
-        // Only set sliding expiration if explicitly configured with a positive value
-        if (_options.SeqCacheExpiration > 0)
-            options.SlidingExpiration = TimeSpan.FromMinutes(_options.SeqCacheExpiration);
-        return options;
+        var memoryCacheOptions = new MemoryCacheEntryOptions();
+
+        if (_options.SeqCacheExpiration <= 0) return memoryCacheOptions;
+
+        // Set sliding expiration based on the configuration
+        memoryCacheOptions.SlidingExpiration = TimeSpan.FromMinutes(_options.SeqCacheExpiration);
+
+        // Register eviction callback to remove the key from _cachedSeqKeys when cache entry is evicted
+        memoryCacheOptions.RegisterPostEvictionCallback((key, value, reason, state) =>
+        {
+            if (key is not string cacheKey) return;
+            _cachedSeqKeys.TryRemove(cacheKey, out _);
+        });
+
+        return memoryCacheOptions;
     }
 
     /// <summary>
