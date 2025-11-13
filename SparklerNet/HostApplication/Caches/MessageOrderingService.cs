@@ -434,7 +434,7 @@ public class MessageOrderingService : IMessageOrderingService
         {
             // For circular sequence numbers (0-255), handle the wrap-around case
             // If x is near 0 (lower third) and y is near 255 (upper third), consider x > y
-            // ReSharper disable once - ConvertIfStatementToSwitchStatement
+            // ReSharper disable once ConvertIfStatementToSwitchStatement
             if (x < 32 && y > 223) return 1;
             if (x > 223 && y < 32) return -1;
 
