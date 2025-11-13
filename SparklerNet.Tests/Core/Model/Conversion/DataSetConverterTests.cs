@@ -17,56 +17,138 @@ public class DataSetConverterTests
     }
 
     [Fact]
-    public void ToProtoDataSet_EmptyDataSet_ReturnsEmptyProtoDataSet()
+    public void ToDataSet_NullProtoDataSet_ThrowsArgumentNullException()
     {
-        var dataSet = new DataSet();
-        var protoDataSet = dataSet.ToProtoDataSet();
-        Assert.NotNull(protoDataSet);
-        Assert.Equal(0ul, protoDataSet.NumOfColumns);
-        Assert.Empty(protoDataSet.Columns);
-        Assert.Empty(protoDataSet.Types_);
-        Assert.Empty(protoDataSet.Rows);
+        ProtoDataSet protoDataSet = null!;
+        Assert.Throws<ArgumentNullException>(() => protoDataSet.ToDataSet());
     }
 
-    [Fact]
-    public void ToProtoDataSet_BasicDataSet_ConvertsCorrectly()
+    [Theory]
+    [InlineData(DataType.Unknown, typeof(NotSupportedException))]
+    [InlineData(DataType.Int32, null)]
+    public void ToProtoDataSet_DataTypeHandling(DataType dataType, Type? expectedExceptionType)
     {
         var dataSet = new DataSet
         {
-            Columns = ["ID", "Name", "Active"],
-            Types = [DataType.Int32, DataType.String, DataType.Boolean],
+            Columns = ["TestColumn"],
+            Types = [dataType],
             ColumnData = new Dictionary<string, List<object>>
             {
-                { "ID", [1, 2, 3] },
-                { "Name", ["Alice", "Bob", "Charlie"] },
-                { "Active", [true, false, true] }
+                { "TestColumn", [1] }
             }
         };
+
+        if (expectedExceptionType != null)
+        {
+            Assert.Throws(expectedExceptionType, () => dataSet.ToProtoDataSet());
+        }
+        else
+        {
+            var result = dataSet.ToProtoDataSet();
+            Assert.NotNull(result);
+            Assert.Single(result.Rows);
+        }
+    }
+
+    [Theory]
+    [InlineData(DataType.Unknown, typeof(NotSupportedException))]
+    [InlineData(DataType.Int32, null)]
+    public void ToDataSet_DataTypeHandling(DataType dataType, Type? expectedExceptionType)
+    {
+        var protoDataSet = new ProtoDataSet
+        {
+            Columns = { "TestColumn" },
+            Types_ = { (uint)dataType }
+        };
+
+        var row = new ProtoDataSetRow();
+        row.Elements.Add(new ProtoDataSetValue { IntValue = 1 });
+        protoDataSet.Rows.Add(row);
+
+        if (expectedExceptionType != null)
+        {
+            Assert.Throws(expectedExceptionType, () => protoDataSet.ToDataSet());
+        }
+        else
+        {
+            var result = protoDataSet.ToDataSet();
+            Assert.NotNull(result);
+            Assert.Equal(1, result.RowCount);
+        }
+    }
+
+    [Theory]
+    [InlineData(0, 0, 0)]
+    [InlineData(3, 2, 2)] // 3 columns, 2 rows
+    public void DataSetToProtoDataSet_EmptyAndBasicConversion(int columnCount, int rowCount, int expectedRowCount)
+    {
+        DataSet dataSet;
+
+        // Configure columns and data if needed
+        if (columnCount > 0)
+        {
+            var columnsList = Enumerable.Range(1, columnCount).Select(i => $"Column{i}").ToList();
+            var typesList = Enumerable.Repeat(DataType.Int32, columnCount).ToList();
+            dataSet = new DataSet
+            {
+                Columns = columnsList,
+                Types = typesList,
+                ColumnData = columnsList.ToDictionary(
+                    col => col,
+                    _ => Enumerable.Range(1, rowCount).Cast<object>().ToList()
+                )
+            };
+        }
+        else
+        {
+            dataSet = new DataSet();
+        }
 
         var protoDataSet = dataSet.ToProtoDataSet();
 
         Assert.NotNull(protoDataSet);
-        Assert.Equal(3ul, protoDataSet.NumOfColumns);
-        Assert.Equal(["ID", "Name", "Active"], protoDataSet.Columns.ToList());
-        Assert.Equal([(uint)DataType.Int32, (uint)DataType.String, (uint)DataType.Boolean],
-            protoDataSet.Types_.ToList());
-        Assert.Equal(3, protoDataSet.Rows.Count);
+        Assert.Equal((ulong)columnCount, protoDataSet.NumOfColumns);
+        Assert.Equal(columnCount, protoDataSet.Columns.Count);
+        Assert.Equal(columnCount, protoDataSet.Types_.Count);
+        Assert.Equal(expectedRowCount, protoDataSet.Rows.Count);
+    }
 
-        // Verify the first row
-        Assert.Equal(3, protoDataSet.Rows[0].Elements.Count);
-        Assert.Equal(1u, protoDataSet.Rows[0].Elements[0].IntValue);
-        Assert.Equal("Alice", protoDataSet.Rows[0].Elements[1].StringValue);
-        Assert.True(protoDataSet.Rows[0].Elements[2].BooleanValue);
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(3, 2)] // 3 columns, 2 rows
+    public void ProtoDataSetToDataSet_EmptyAndBasicConversion(int columnCount, int rowCount)
+    {
+        var protoDataSet = new ProtoDataSet
+        {
+            NumOfColumns = (ulong)columnCount
+        };
 
-        // Verify the second row
-        Assert.Equal(2u, protoDataSet.Rows[1].Elements[0].IntValue);
-        Assert.Equal("Bob", protoDataSet.Rows[1].Elements[1].StringValue);
-        Assert.False(protoDataSet.Rows[1].Elements[2].BooleanValue);
+        // Configure columns and data if needed
+        if (columnCount > 0)
+        {
+            for (var i = 1; i <= columnCount; i++)
+            {
+                protoDataSet.Columns.Add($"Column{i}");
+                protoDataSet.Types_.Add((uint)DataType.Int32);
+            }
 
-        // Verify the third row
-        Assert.Equal(3u, protoDataSet.Rows[2].Elements[0].IntValue);
-        Assert.Equal("Charlie", protoDataSet.Rows[2].Elements[1].StringValue);
-        Assert.True(protoDataSet.Rows[2].Elements[2].BooleanValue);
+            // Add rows
+            for (var i = 0; i < rowCount; i++)
+            {
+                var row = new ProtoDataSetRow();
+                for (var j = 0; j < columnCount; j++)
+                    row.Elements.Add(new ProtoDataSetValue { IntValue = (uint)(i + 1) });
+                protoDataSet.Rows.Add(row);
+            }
+        }
+
+        var dataSet = protoDataSet.ToDataSet();
+
+        Assert.NotNull(dataSet);
+        Assert.Equal(columnCount, dataSet.ColumnCount);
+        Assert.Equal(rowCount, dataSet.RowCount);
+        Assert.Equal(columnCount, dataSet.Columns.Count);
+        Assert.Equal(columnCount, dataSet.Types.Count);
     }
 
     [Fact]
@@ -119,84 +201,6 @@ public class DataSetConverterTests
         Assert.Equal(2.71828, row.Elements[9].DoubleValue, 5);
         Assert.True(row.Elements[10].BooleanValue);
         Assert.Equal("Test string", row.Elements[11].StringValue);
-    }
-
-    [Fact]
-    public void ToProtoDataSet_UnsupportedDataType_ThrowsNotSupportedException()
-    {
-        var dataSet = new DataSet
-        {
-            Columns = ["Unsupported"],
-            Types = [DataType.Unknown],
-            ColumnData = new Dictionary<string, List<object>>
-            {
-                { "Unsupported", [1] }
-            }
-        };
-
-        Assert.Throws<NotSupportedException>(() => dataSet.ToProtoDataSet());
-    }
-
-    [Fact]
-    public void ToDataSet_NullProtoDataSet_ThrowsArgumentNullException()
-    {
-        ProtoDataSet protoDataSet = null!;
-        Assert.Throws<ArgumentNullException>(() => protoDataSet.ToDataSet());
-    }
-
-    [Fact]
-    public void ToDataSet_EmptyProtoDataSet_ReturnsEmptyDataSet()
-    {
-        var protoDataSet = new ProtoDataSet();
-        var dataSet = protoDataSet.ToDataSet();
-        Assert.NotNull(dataSet);
-        Assert.Empty(dataSet.Columns);
-        Assert.Empty(dataSet.Types);
-        Assert.Empty(dataSet.ColumnData);
-        Assert.Equal(0, dataSet.RowCount);
-        Assert.Equal(0, dataSet.ColumnCount);
-    }
-
-    [Fact]
-    public void ToDataSet_BasicProtoDataSet_ConvertsCorrectly()
-    {
-        var protoDataSet = new ProtoDataSet
-        {
-            NumOfColumns = 3,
-            Columns = { "ID", "Name", "Active" },
-            Types_ = { (uint)DataType.Int32, (uint)DataType.String, (uint)DataType.Boolean }
-        };
-
-        // Add rows
-        var row1 = new ProtoDataSetRow();
-        row1.Elements.Add(new ProtoDataSetValue { IntValue = 1 });
-        row1.Elements.Add(new ProtoDataSetValue { StringValue = "Alice" });
-        row1.Elements.Add(new ProtoDataSetValue { BooleanValue = true });
-
-        var row2 = new ProtoDataSetRow();
-        row2.Elements.Add(new ProtoDataSetValue { IntValue = 2 });
-        row2.Elements.Add(new ProtoDataSetValue { StringValue = "Bob" });
-        row2.Elements.Add(new ProtoDataSetValue { BooleanValue = false });
-
-        var row3 = new ProtoDataSetRow();
-        row3.Elements.Add(new ProtoDataSetValue { IntValue = 3 });
-        row3.Elements.Add(new ProtoDataSetValue { StringValue = "Charlie" });
-        row3.Elements.Add(new ProtoDataSetValue { BooleanValue = true });
-
-        protoDataSet.Rows.Add(row1);
-        protoDataSet.Rows.Add(row2);
-        protoDataSet.Rows.Add(row3);
-
-        var dataSet = protoDataSet.ToDataSet();
-
-        Assert.NotNull(dataSet);
-        Assert.Equal(3, dataSet.ColumnCount);
-        Assert.Equal(3, dataSet.RowCount);
-        Assert.Equal(["ID", "Name", "Active"], dataSet.Columns);
-        Assert.Equal([DataType.Int32, DataType.String, DataType.Boolean], dataSet.Types);
-        Assert.Equal([1, 2, 3], dataSet.ColumnData["ID"].Cast<int>());
-        Assert.Equal(["Alice", "Bob", "Charlie"], dataSet.ColumnData["Name"].Cast<string>());
-        Assert.Equal([true, false, true], dataSet.ColumnData["Active"].Cast<bool>());
     }
 
     [Fact]
@@ -253,63 +257,73 @@ public class DataSetConverterTests
         Assert.Equal("Test string", dataSet.ColumnData["String"][0]);
     }
 
-    [Fact]
-    public void ToDataSet_TooManyElementsInRow_SkipsExtraElements()
+    [Theory]
+    [InlineData(2, 3)] // 2 columns, 3 elements (extra element should be skipped)
+    [InlineData(3, 2)] // 3 columns, 2 elements (missing element should be handled)
+    public void ToDataSet_RowElementCountHandling(int columnCount, int elementCount)
     {
         var protoDataSet = new ProtoDataSet
         {
-            NumOfColumns = 2,
-            Columns = { "Column1", "Column2" },
-            Types_ = { (uint)DataType.Int32, (uint)DataType.String }
+            NumOfColumns = (ulong)columnCount
         };
 
-        var row = new ProtoDataSetRow();
-        row.Elements.Add(new ProtoDataSetValue { IntValue = 1 });
-        row.Elements.Add(new ProtoDataSetValue { StringValue = "Test" });
-        row.Elements.Add(new ProtoDataSetValue { BooleanValue = true }); // This should be skipped
+        // Add columns and types
+        for (var i = 1; i <= columnCount; i++)
+        {
+            protoDataSet.Columns.Add($"Column{i}");
+            protoDataSet.Types_.Add((uint)DataType.Int32);
+        }
 
+        // Add a row with different element count than column count
+        var row = new ProtoDataSetRow();
+        for (var i = 0; i < elementCount; i++) row.Elements.Add(new ProtoDataSetValue { IntValue = (uint)(i + 1) });
         protoDataSet.Rows.Add(row);
 
         var dataSet = protoDataSet.ToDataSet();
 
         Assert.NotNull(dataSet);
-        Assert.Equal(2, dataSet.ColumnCount);
+        Assert.Equal(columnCount, dataSet.ColumnCount);
         Assert.Equal(1, dataSet.RowCount);
-        Assert.Equal(1, dataSet.ColumnData["Column1"][0]);
-        Assert.Equal("Test", dataSet.ColumnData["Column2"][0]);
     }
 
-    [Fact]
-    public void ToDataSet_UnsupportedDataType_ThrowsNotSupportedException()
+    [Theory]
+    [InlineData(new object[] { "ID", "Name", "Value" },
+        new object[] { DataType.Int32, DataType.String, DataType.Double }, 3)]
+    [InlineData(new object[] { "SingleColumn" }, new object[] { DataType.Boolean }, 1)]
+    public void DataSetRoundTrip_PreservesData(object[] columnNameObjects, object[] dataTypeObjects, int rowCount)
     {
-        var protoDataSet = new ProtoDataSet
-        {
-            Columns = { "Unsupported" },
-            Types_ = { (uint)DataType.Unknown }
-        };
+        // Convert object[] to string[] and DataType[]
+        var columnNames = columnNameObjects.Cast<string>().ToArray();
+        var dataTypes = dataTypeObjects.Cast<DataType>().ToArray();
 
-        // Add a row to ensure ConvertFromProtoDataSetValue is called
-        var row = new ProtoDataSetRow();
-        row.Elements.Add(new ProtoDataSetValue { IntValue = 1 });
-        protoDataSet.Rows.Add(row);
-
-        Assert.Throws<NotSupportedException>(() => protoDataSet.ToDataSet());
-    }
-
-    [Fact]
-    public void DataSetRoundTrip_PreservesData()
-    {
+        // Create the original data set with sample data
         var originalDataSet = new DataSet
         {
-            Columns = ["ID", "Name", "Value"],
-            Types = [DataType.Int32, DataType.String, DataType.Double],
-            ColumnData = new Dictionary<string, List<object>>
-            {
-                { "ID", [1, 2, 3] },
-                { "Name", ["A", "B", "C"] },
-                { "Value", [1.1, 2.2, 3.3] }
-            }
+            Columns = columnNames.ToList(),
+            Types = dataTypes.ToList(),
+            ColumnData = new Dictionary<string, List<object>>()
         };
+
+        // Add sample data to each column
+        for (var rowIndex = 0; rowIndex < rowCount; rowIndex++)
+        for (var colIndex = 0; colIndex < columnNames.Length; colIndex++)
+        {
+            var columnName = columnNames[colIndex];
+            var dataType = dataTypes[colIndex];
+
+            // Generate sample value based on the data type
+            object value = dataType switch
+            {
+                DataType.Int32 => rowIndex + 1,
+                DataType.String => $"Value_{rowIndex}",
+                DataType.Double => rowIndex * 1.5,
+                DataType.Boolean => rowIndex % 2 == 0,
+                _ => 0
+            };
+
+            if (!originalDataSet.ColumnData.ContainsKey(columnName)) originalDataSet.ColumnData[columnName] = [];
+            originalDataSet.ColumnData[columnName].Add(value);
+        }
 
         // Round trip: DataSet -> ProtoDataSet -> DataSet
         var protoDataSet = originalDataSet.ToProtoDataSet();

@@ -36,7 +36,7 @@ public static class MetricConverter
         if (metric.Metadata != null) protoMetric.Metadata = metric.Metadata.ToProtoMetaData();
         if (metric.Properties != null) protoMetric.Properties = metric.Properties.ToProtoPropertySet();
 
-        // Only set the value if it's not null and DateType is specified
+        // Only set the value if it's not null and DataType is specified
         if (metric is not { DataType: not null, IsNull: false }) return protoMetric;
 
         // Set the value based on the data type

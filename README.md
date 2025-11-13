@@ -27,7 +27,7 @@ The library aims to fully implement the complete Sparkplug protocol, with planne
 - .NET 9.0 SDK or later
 - MQTT protocol-compatible message broker (e.g., Mosquitto, HiveMQ)
 
-## Roadmap - Release v1.0
+## Roadmap
 
 ### Core Functionality
 
@@ -43,7 +43,7 @@ The library aims to fully implement the complete Sparkplug protocol, with planne
 - ✅ Default wildcard topic support (spBv1.0/#)
 - ✅ Specific group and edge node subscription support
 - ✅ Sparkplug Host Application Message Ordering
-- ⬜ Mapping between Metric's name and alias
+- ⬜ Cache Edge Node and Device birth certificates
 
 ### Message Processing
 
@@ -71,7 +71,7 @@ The library aims to fully implement the complete Sparkplug protocol, with planne
 ### Additional Features
 
 - ⬜ Reconnection logic with exponential backoff
-- ⬜ Configuration validation
+- ✅ Configuration validation
 
 ## Installation
 
@@ -103,8 +103,8 @@ var mqttOptions = new MqttClientOptionsBuilder()
 // Create Sparkplug client options
 var sparkplugOptions = new SparkplugClientOptions
 {
-    HostApplicationId = "MyHostApplication",
-    Version = SparkplugVersion.V300
+    Version = SparkplugVersion.V300,
+    HostApplicationId = "MyHostApplication"
 };
 
 // Create logger
@@ -127,21 +127,8 @@ hostApplication.DeviceBirthReceivedAsync += args => {
 // Start the application
 await hostApplication.StartAsync();
 
-// Example of sending a Device Rebirth command
-var payload = new Payload
-{
-    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-    Metrics =
-    {
-        new Metric
-        {
-            Name = "Device Control/Rebirth",
-            DateType = DataType.Boolean,
-            Value = true
-        }
-    }
-};
-await hostApplication.PublishDeviceCommandMessageAsync("myGroup", "myEdgeNode", "myDevice", payload);
+// Example of sending a Device Rebirth command using the extension method
+await hostApplication.PublishDeviceRebirthCommandAsync("myGroup", "myEdgeNode", "myDevice");
 
 // Stop the application
 await hostApplication.StopAsync();
@@ -164,6 +151,13 @@ Please refer to the `SparklerNet.Samples` project for the complete implementatio
 ## Project Structure
 
 ```
+├── .gitattributes          # Git attributes file
+├── .github/                # GitHub configuration files
+│   └── workflows/          # GitHub Actions workflows
+├── .gitignore              # Git ignore file
+├── GIT_FLOW.md             # Git Flow workflow documentation
+├── LICENSE                 # License file
+├── README.md               # Project documentation
 ├── SparklerNet/            # Core library
 │   ├── Core/               # Core functionality implementation
 │   │   ├── Constants/      # Constant definitions
@@ -173,9 +167,28 @@ Please refer to the `SparklerNet.Samples` project for the complete implementatio
 │   │   ├── Options/        # Configuration options
 │   │   ├── Protobuf/       # Protobuf message definitions
 │   │   └── Topics/         # Topic handling
-│   └── HostApplication/    # Host application implementation
+│   ├── HostApplication/    # Host application implementation
+│   │   ├── Caches/         # Caching mechanisms
+│   │   ├── Extensions/     # Host application extension methods
+│   │   └── SparkplugHostApplication.cs # Main host application class
+│   ├── Properties/         # Assembly properties
+│   │   └── AssemblyInfo.cs # Assembly information
+│   └── SparklerNet.csproj  # Core library project file
 ├── SparklerNet.Samples/    # Sample application
+│   ├── Program.cs          # Sample program entry point
+│   ├── SimpleHostApplication.cs # Simple host application implementation
+│   └── SparklerNet.Samples.csproj # Sample project file
 ├── SparklerNet.Tests/      # Unit tests
+│   ├── Core/               # Core functionality tests
+│   │   ├── Constants/      # Constant tests
+│   │   ├── Extensions/     # Extension method tests
+│   │   ├── Model/          # Model tests
+│   │   └── Topics/         # Topic tests
+│   ├── HostApplication/    # Host application tests
+│   │   └── Caches/         # Cache mechanism tests
+│   └── SparklerNet.Tests.csproj # Test project file
+├── SparklerNet.sln         # Solution file
+└── SparklerNet.sln.DotSettings # ReSharper settings
 ```
 
 ## Supported Sparkplug B Message Types
@@ -194,9 +207,12 @@ SparklerNet supports the following Sparkplug B message types:
 
 ## Dependencies
 
-- Google.Protobuf (3.32.1)
-- Microsoft.Extensions.Logging (9.0.9)
+- Google.Protobuf (3.33.0)
+- Microsoft.Extensions.Caching.Memory (9.0.10)
+- Microsoft.Extensions.Logging (9.0.10)
 - MQTTnet (5.0.1.1416)
+- System.Net.Http (4.3.4)
+- System.Text.RegularExpressions (4.3.1)
 
 ## Contribution Guidelines
 
