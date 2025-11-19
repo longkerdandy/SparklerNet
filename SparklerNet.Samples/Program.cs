@@ -1,15 +1,12 @@
-using MQTTnet;
-using MQTTnet.Formatter;
 using Serilog;
 using Serilog.Extensions.Logging;
-using SparklerNet.Core.Constants;
-using SparklerNet.Core.Options;
+using SparklerNet.Samples.Profiles;
 
 namespace SparklerNet.Samples;
 
 internal static class Program
 {
-    public static async Task Main()
+    public static async Task Main(string[] args)
     {
         // Configure Serilog logging
         Log.Logger = new LoggerConfiguration()
@@ -20,9 +17,14 @@ internal static class Program
         // Display welcome message
         DisplayWelcomeMessage();
 
-        // Create client options
-        var mqttOptions = CreateMqttOptions();
-        var sparkplugOptions = CreateSparkplugOptions();
+        // Parse command line arguments and determine which profile to use
+        var profileName = ParseProfileArgument(args);
+        var profile = CreateProfile(profileName);
+        Log.Information("Using profile: {ProfileName}", profileName);
+
+        // Get client options from the selected profile
+        var mqttOptions = profile.GetMqttClientOptions();
+        var sparkplugOptions = profile.GetSparkplugClientOptions();
 
         // Create logger factory and host application
         using var loggerFactory = new SerilogLoggerFactory(Log.Logger);
@@ -35,9 +37,9 @@ internal static class Program
         // Flush logs before exiting
         await Log.CloseAndFlushAsync();
     }
-    
+
     /// <summary>
-    /// Displays the application welcome message with ASCII art and command instructions.
+    ///     Displays the application welcome message with ASCII art and command instructions.
     /// </summary>
     private static void DisplayWelcomeMessage()
     {
@@ -64,29 +66,37 @@ internal static class Program
     }
 
     /// <summary>
-    /// Creates and configures MQTT client options.
+    ///     Parses the command line arguments to determine which profile to use.
     /// </summary>
-    /// <returns>Configured MqttClientOptions instance.</returns>
-    private static MqttClientOptions CreateMqttOptions()
+    /// <param name="args">The command line arguments.</param>
+    /// <returns>The profile name.</returns>
+    private static string ParseProfileArgument(string[] args)
     {
-        return new MqttClientOptionsBuilder()
-            .WithTcpServer("BROKER.HIVEMQ.COM", 1883)
-            .WithProtocolVersion(MqttProtocolVersion.V311)
-            .Build();
+        const string defaultProfile = "mimic";
+        const string profileArg = "--profile";
+
+        // Check if --profile argument is provided
+        for (var i = 0; i < args.Length; i++)
+            if (args[i].Equals(profileArg, StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                return args[i + 1].ToLower();
+
+        // Default to the mimic profile if no profile is specified
+        return defaultProfile;
     }
 
     /// <summary>
-    /// Creates and configures Sparkplug client options.
+    ///     Creates the appropriate profile based on the profile name.
     /// </summary>
-    /// <returns>Configured SparkplugClientOptions instance.</returns>
-    private static SparkplugClientOptions CreateSparkplugOptions()
+    /// <param name="profileName">The name of the profile to create.</param>
+    /// <returns>The created profile instance.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when an invalid profile name is provided.</exception>
+    private static IProfile CreateProfile(string profileName)
     {
-        return new SparkplugClientOptions
+        return profileName switch
         {
-            Version = SparkplugVersion.V300,
-            HostApplicationId = "SparklerNetSimpleHostApp",
-            Subscriptions = { new MqttTopicFilterBuilder().WithTopic("spBv1.0/MIMIC/#").WithAtLeastOnceQoS().Build() },
-            EnableMessageOrdering = true
+            "tck" => new TckApplicationProfile(),
+            "mimic" => new MimicApplicationProfile(),
+            _ => throw new ArgumentOutOfRangeException(nameof(profileName), profileName, null)
         };
     }
 }

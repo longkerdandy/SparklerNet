@@ -32,6 +32,14 @@ public record SparkplugClientOptions
     public List<MqttTopicFilter> Subscriptions { get; set; } = [];
 
     /// <summary>
+    ///     Whether to always subscribe to the wildcard topic 'spBv1.0/#'.
+    ///     If set to true, the client will subscribe to the wildcard topic 'spBv1.0/#' in addition to the topics specified in
+    ///     Subscriptions. This is required to pass the Sparkplug TCK tests.
+    ///     The default value is false.
+    /// </summary>
+    public bool AlwaysSubscribeToWildcardTopic { get; set; }
+
+    /// <summary>
     ///     Whether to enable the message ordering mechanism. The specification requires Sparkplug Host Application to ensure
     ///     that all messages arrive within a Reorder Timeout.
     ///     Since the cache and timeout mechanism actually involves many edge cases to consider, enabling this function will

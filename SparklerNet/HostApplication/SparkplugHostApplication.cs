@@ -48,7 +48,7 @@ public class SparkplugHostApplication
     /// <param name="mqttOptions">The MQTT Client Options.</param>
     /// <param name="sparkplugOptions">The Sparkplug Client Options.</param>
     /// <param name="loggerFactory">The Logger Factory.</param>
-    public SparkplugHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions, 
+    public SparkplugHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions,
         ILoggerFactory loggerFactory)
     {
         // Validate sparkplugOptions
@@ -165,8 +165,9 @@ public class SparkplugHostApplication
             _logger.LogWarning(ex, "Exception occurred while handling client connected event");
         }
 
-        _logger.LogInformation("Successfully started Sparkplug Host Application {HostApplicationId}.",
-            _sparkplugOptions.HostApplicationId);
+        _logger.LogInformation(
+            "Successfully started Sparkplug Host Application {HostApplicationId} with MQTT clint id {ClientId}.",
+            _sparkplugOptions.HostApplicationId, _mqttOptions.ClientId);
         return (connectResult, subscribeResult);
     }
 
@@ -261,18 +262,17 @@ public class SparkplugHostApplication
     /// <returns>The task result contains the MQTT subscribe result.</returns>
     protected async Task<MqttClientSubscribeResult> SubscribeAsync()
     {
-        // Remove the self (STATE) subscription if present.
+        // Remove the Sparkplug specification related subscriptions if present.
         var stateTopic = SparkplugTopicFactory.CreateStateTopic(
             _sparkplugOptions.Version, _sparkplugOptions.HostApplicationId);
-        _sparkplugOptions.Subscriptions.RemoveAll(topicFilter => topicFilter.Topic == stateTopic);
+        var spBTopic = SparkplugTopicFactory.CreateSparkplugWildcardTopic(_sparkplugOptions.Version);
+        _sparkplugOptions.Subscriptions.RemoveAll(topicFilter =>
+            topicFilter.Topic == stateTopic || topicFilter.Topic == spBTopic);
 
-        // Add the default Sparkplug wildcard subscription if the subscriptions option is empty.
-        if (_sparkplugOptions.Subscriptions.Count == 0)
-        {
-            var spBTopic = SparkplugTopicFactory.CreateSparkplugWildcardTopic(_sparkplugOptions.Version);
+        // Add the default Sparkplug wildcard subscription if AlwaysSubscribeToWildcardTopic is set to true or the subscriptions are empty.
+        if (_sparkplugOptions.AlwaysSubscribeToWildcardTopic || _sparkplugOptions.Subscriptions.Count == 0)
             _sparkplugOptions.Subscriptions.Add(
                 new MqttTopicFilterBuilder().WithTopic(spBTopic).WithAtLeastOnceQoS().Build());
-        }
 
         // Add the self (STATE) subscription.
         _sparkplugOptions.Subscriptions.Add(
