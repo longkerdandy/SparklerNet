@@ -73,7 +73,7 @@ The library aims to fully implement the complete Sparkplug protocol, with planne
 - ⬜ Reconnection logic with exponential backoff
 - ✅ Configuration validation
 
-## Eclipse™ Sparkplug™ TCK Compatability
+## Eclipse™ Sparkplug™ TCK Compatibility
 
 The following are the compatibility test results against the Eclipse Sparkplug Test Compatibility Kit (TCK) available at https://github.com/eclipse-sparkplug/sparkplug/tree/master/tck:
 
