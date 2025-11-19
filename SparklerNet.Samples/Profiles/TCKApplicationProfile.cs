@@ -29,7 +29,8 @@ public class TckApplicationProfile : IProfile
             Version = SparkplugVersion.V300,
             HostApplicationId = "SparklerNetSimpleHostApp",
             AlwaysSubscribeToWildcardTopic = true,
-            EnableMessageOrdering = true
+            EnableMessageOrdering = true,
+            SeqReorderTimeout = 5000
         };
     }
 }
