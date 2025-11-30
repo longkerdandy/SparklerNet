@@ -31,11 +31,11 @@ public class StatusTrackingService : IStatusTrackingService
         // Build the cache key for status tracking
         var cacheKey = CacheHelper.BuildCacheKey(StatusKeyPrefix, groupId, edgeNodeId, deviceId);
 
-        // Get the status from the cache or create a new entry if it doesn't exist'
+        // Get the status from the cache or create a new entry if it doesn't exist
         var status = await _cache.GetOrCreateAsync<EndpointStatus?>(
             cacheKey, _ => ValueTask.FromResult<EndpointStatus?>(null));
 
-        // If the status is not in the cache, assume it offline
+        // If the status is not in the cache, assume it is offline
         return status is { IsOnline: true };
     }
 
@@ -69,7 +69,7 @@ public class StatusTrackingService : IStatusTrackingService
             if (newStatus.IsOnline)
             {
                 // Update the cache if the new status is newer than the current status
-                // Note the current status may already be updated because the value is null
+                // Note: if the cache is empty, currentStatus will be set to newStatus by GetOrCreateAsync
                 if (newStatus.Timestamp > currentStatus.Timestamp)
                     await _cache.SetAsync(cacheKey, newStatus, tags: [cacheTag]);
             }
@@ -83,8 +83,7 @@ public class StatusTrackingService : IStatusTrackingService
 
                 // When the current status is online, update if:
                 // 1. The new status has the same bdSeq 
-                // 2. The new status has the same timestamp
-                // 3. The new status is newer than the current status
+                // 2. The new status has the same or newer timestamp
                 if (currentStatus.IsOnline &&
                     (newStatus.BdSeq == currentStatus.BdSeq || newStatus.Timestamp >= currentStatus.Timestamp))
                 {
@@ -128,7 +127,7 @@ public class StatusTrackingService : IStatusTrackingService
                 cacheKey, _ => ValueTask.FromResult(newStatus), tags: [cacheTag]);
 
             // Update the cache if the new status is newer than the current status
-            // Note the current status may already be updated because the value is null
+            // Note: if the cache is empty, currentStatus will be set to newStatus by GetOrCreateAsync
             if (newStatus.Timestamp > currentStatus.Timestamp)
                 await _cache.SetAsync(cacheKey, newStatus, tags: [cacheTag]);
         }

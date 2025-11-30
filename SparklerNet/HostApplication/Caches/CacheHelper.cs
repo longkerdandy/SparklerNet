@@ -5,7 +5,7 @@ namespace SparklerNet.HostApplication.Caches;
 public static class CacheHelper
 {
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> Semaphores = new();
-    
+
     /// <summary>
     ///     Builds a standardized cache key based on the provided prefix and identifiers
     /// </summary>
@@ -15,14 +15,14 @@ public static class CacheHelper
     /// <param name="deviceId">The device ID part of the key (optional)</param>
     /// <returns>The constructed cache key in format "prefix:groupId:edgeNodeId:deviceId" or "prefix:groupId:edgeNodeId"</returns>
     public static string BuildCacheKey(string? prefix, string groupId, string edgeNodeId, string? deviceId)
-    { 
+    {
         var baseKey = !string.IsNullOrEmpty(deviceId)
             ? $"{groupId}:{edgeNodeId}:{deviceId}"
             : $"{groupId}:{edgeNodeId}";
 
         return string.IsNullOrEmpty(prefix) ? baseKey : $"{prefix}{baseKey}";
     }
-    
+
     /// <summary>
     ///     Gets a SemaphoreSlim object for the specified context to support async locking
     ///     Ensures thread safety for asynchronous operations on a specific device/node combination
@@ -35,5 +35,13 @@ public static class CacheHelper
     {
         var key = BuildCacheKey(null, groupId, edgeNodeId, deviceId);
         return Semaphores.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
+    }
+
+    /// <summary>
+    ///     Clears all SemaphoreSlim objects from the cache
+    /// </summary>
+    public static void ClearSemaphores()
+    {
+        Semaphores.Clear();
     }
 }
