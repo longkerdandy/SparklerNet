@@ -45,7 +45,7 @@ public interface IMessageOrderingService
     ///     Clears the sequence cache and pending messages for a specific edge node or device
     ///     Also cleans up any associated timer resources
     /// </summary>
-    /// <param name="groupId">The group ID of the edge node</param>
+    /// <param name="groupId">The group ID</param>
     /// <param name="edgeNodeId">The edge node ID</param>
     /// <param name="deviceId">The device ID (optional)</param>
     void ClearMessageOrder(string groupId, string edgeNodeId, string? deviceId);
