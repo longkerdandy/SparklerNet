@@ -42,7 +42,7 @@ public static class CacheHelper
 
     /// <summary>
     ///     Clears all SemaphoreSlim objects from the cache
-    ///     This method should only be called during application shutdown to prevent racing conditions
+    ///     This method should only be called during application shutdown to prevent race conditions
     /// </summary>
     public static void ClearSemaphores()
     {

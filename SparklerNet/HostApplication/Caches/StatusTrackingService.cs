@@ -30,13 +30,26 @@ public class StatusTrackingService : IStatusTrackingService
 
         // Build the cache key for status tracking
         var cacheKey = CacheHelper.BuildCacheKey(StatusKeyPrefix, groupId, edgeNodeId, deviceId);
+        
+        // Use SemaphoreSlim for async thread safety
+        var semaphore = CacheHelper.GetSemaphore(groupId, edgeNodeId, null);
+        
+        try
+        {
+            // Wait for the semaphore asynchronously
+            await semaphore.WaitAsync();
+            
+            // Get the status from the cache or create a new entry if it doesn't exist
+            var status = await _cache.GetOrCreateAsync<EndpointStatus?>(
+                cacheKey, _ => ValueTask.FromResult<EndpointStatus?>(null));
 
-        // Get the status from the cache or create a new entry if it doesn't exist
-        var status = await _cache.GetOrCreateAsync<EndpointStatus?>(
-            cacheKey, _ => ValueTask.FromResult<EndpointStatus?>(null));
-
-        // If the status is not in the cache, assume it is offline
-        return status is { IsOnline: true };
+            // If the status is not in the cache, assume it is offline
+            return status is { IsOnline: true };
+        }
+        finally
+        {
+            semaphore.Release();
+        }
     }
 
     /// <inheritdoc />

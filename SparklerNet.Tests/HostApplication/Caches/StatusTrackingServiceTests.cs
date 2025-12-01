@@ -22,7 +22,7 @@ public class StatusTrackingServiceTests
     }
 
     [Fact]
-    public async Task IsOnline_WhenNoStatusInCache_ReturnsFalse()
+    public async Task IsEndpointOnline_WhenNoStatusInCache_ReturnsFalse()
     {
         var groupId = "group1";
         var edgeNodeId = "edgeNode1";
@@ -34,7 +34,7 @@ public class StatusTrackingServiceTests
     }
 
     [Fact]
-    public async Task IsOnline_WithOnlineStatus_ReturnsTrue()
+    public async Task IsEndpointOnline_WithOnlineStatus_ReturnsTrue()
     {
         var groupId = "group1";
         var edgeNodeId = "edgeNode1";
@@ -47,7 +47,7 @@ public class StatusTrackingServiceTests
     }
 
     [Fact]
-    public async Task IsOnline_WithOfflineStatus_ReturnsFalse()
+    public async Task IsEndpointOnline_WithOfflineStatus_ReturnsFalse()
     {
         var groupId = "group1";
         var edgeNodeId = "edgeNode1";
@@ -61,7 +61,7 @@ public class StatusTrackingServiceTests
     }
 
     [Fact]
-    public async Task IsOnline_WithNullDeviceId_ReturnsCorrectStatus()
+    public async Task IsEndpointOnline_WithNullDeviceId_ReturnsCorrectStatus()
     {
         var groupId = "group1";
         var edgeNodeId = "edgeNode1";
