@@ -115,7 +115,8 @@ public class StatusTrackingService : IStatusTrackingService
         var newStatus = new EndpointStatus { IsOnline = isOnline, BdSeq = 0, Timestamp = timestamp };
 
         // Use SemaphoreSlim for async thread safety
-        var semaphore = CacheHelper.GetSemaphore(groupId, edgeNodeId, deviceId);
+        // Because when Edge Node is offline, all devices are also offline, so always use the Edge Node level semaphore
+        var semaphore = CacheHelper.GetSemaphore(groupId, edgeNodeId, null);
 
         try
         {

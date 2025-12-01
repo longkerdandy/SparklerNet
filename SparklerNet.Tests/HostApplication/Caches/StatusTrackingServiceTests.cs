@@ -314,4 +314,66 @@ public class StatusTrackingServiceTests
         Assert.False(await _statusService.IsOnline(groupId, edgeNodeId, deviceId1), "First device should be offline");
         Assert.False(await _statusService.IsOnline(groupId, edgeNodeId, deviceId2), "Second device should be offline");
     }
+
+    [Fact]
+    public async Task TestMixedEdgeNodeAndDeviceStatusUpdates_Concurrent()
+    {
+        const string groupId = "test-group";
+        const string edgeNodeId = "test-edge-node";
+        const string deviceId = "test-device";
+
+        var completedEdgeNodeTasks = 0;
+        var completedDeviceTasks = 0;
+        var errors = new List<Exception>();
+
+        // Create mixed edge node and device update tasks
+        var edgeNodeTasks = Enumerable.Range(0, 5).Select(async _ =>
+        {
+            try
+            {
+                await _statusService.UpdateEdgeNodeOnlineStatus(
+                    groupId,
+                    edgeNodeId,
+                    true,
+                    1, // KeepAliveInterval
+                    DateTimeOffset.Now.ToUnixTimeMilliseconds());
+                Interlocked.Increment(ref completedEdgeNodeTasks);
+            }
+            catch (Exception ex)
+            {
+                errors.Add(ex);
+            }
+        });
+
+        var deviceTasks = Enumerable.Range(0, 5).Select(async _ =>
+        {
+            try
+            {
+                await _statusService.UpdateDeviceOnlineStatus(
+                    groupId,
+                    edgeNodeId,
+                    deviceId,
+                    true,
+                    DateTimeOffset.Now.ToUnixTimeMilliseconds());
+                Interlocked.Increment(ref completedDeviceTasks);
+            }
+            catch (Exception ex)
+            {
+                errors.Add(ex);
+            }
+        });
+
+        // Run all tasks concurrently
+        var allTasks = edgeNodeTasks.Concat(deviceTasks);
+        await Task.WhenAll(allTasks);
+
+        // Verify no errors
+        Assert.Empty(errors);
+        Assert.Equal(5, completedEdgeNodeTasks);
+        Assert.Equal(5, completedDeviceTasks);
+
+        // Verify statuses were updated correctly
+        Assert.True(await _statusService.IsOnline(groupId, edgeNodeId, null));
+        Assert.True(await _statusService.IsOnline(groupId, edgeNodeId, deviceId));
+    }
 }

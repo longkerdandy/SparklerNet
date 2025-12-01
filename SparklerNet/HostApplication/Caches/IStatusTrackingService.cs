@@ -1,5 +1,8 @@
 ﻿namespace SparklerNet.HostApplication.Caches;
 
+/// <summary>
+///     Provides methods to track and query the status of edge nodes and devices.
+/// </summary>
 public interface IStatusTrackingService
 {
     /// <summary>
@@ -20,7 +23,7 @@ public interface IStatusTrackingService
     /// <param name="bdSeq">The bdSeq metric value of Birth or Death certificates</param>
     /// <param name="timestamp">The timestamp of Birth or Death certificates</param>
     Task UpdateEdgeNodeOnlineStatus(string groupId, string edgeNodeId, bool isOnline, int bdSeq, long timestamp);
-    
+
     /// <summary>
     ///     Updates the online status of a specific device.
     /// </summary>

@@ -2,6 +2,9 @@
 
 namespace SparklerNet.HostApplication.Caches;
 
+/// <summary>
+///     Provides helper methods for cache operations.
+/// </summary>
 public static class CacheHelper
 {
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> Semaphores = new();
@@ -42,6 +45,7 @@ public static class CacheHelper
     /// </summary>
     public static void ClearSemaphores()
     {
+        foreach (var semaphore in Semaphores.Values) semaphore.Dispose();
         Semaphores.Clear();
     }
 }
