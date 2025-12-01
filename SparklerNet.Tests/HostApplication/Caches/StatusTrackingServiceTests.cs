@@ -28,7 +28,7 @@ public class StatusTrackingServiceTests
         var edgeNodeId = "edgeNode1";
         var deviceId = "device1";
 
-        var result = await _statusService.IsOnline(groupId, edgeNodeId, deviceId);
+        var result = await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId);
 
         Assert.False(result);
     }
@@ -41,7 +41,7 @@ public class StatusTrackingServiceTests
 
         await _statusService.UpdateEdgeNodeOnlineStatus(groupId, edgeNodeId, true, 1, 1000);
 
-        var edgeNodeStatus = await _statusService.IsOnline(groupId, edgeNodeId, null);
+        var edgeNodeStatus = await _statusService.IsEndpointOnline(groupId, edgeNodeId, null);
 
         Assert.True(edgeNodeStatus);
     }
@@ -55,7 +55,7 @@ public class StatusTrackingServiceTests
 
         await _statusService.UpdateEdgeNodeOnlineStatus(groupId, edgeNodeId, false, 1, 1000);
 
-        var result = await _statusService.IsOnline(groupId, edgeNodeId, deviceId);
+        var result = await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId);
 
         Assert.False(result);
     }
@@ -68,7 +68,7 @@ public class StatusTrackingServiceTests
 
         await _statusService.UpdateEdgeNodeOnlineStatus(groupId, edgeNodeId, true, 1, 1000);
 
-        var result = await _statusService.IsOnline(groupId, edgeNodeId, null);
+        var result = await _statusService.IsEndpointOnline(groupId, edgeNodeId, null);
 
         Assert.True(result);
     }
@@ -84,7 +84,7 @@ public class StatusTrackingServiceTests
 
         await _statusService.UpdateEdgeNodeOnlineStatus(groupId, edgeNodeId, isOnline, bdSeq, timestamp);
 
-        var status = await _statusService.IsOnline(groupId, edgeNodeId, null);
+        var status = await _statusService.IsEndpointOnline(groupId, edgeNodeId, null);
 
         Assert.True(status);
     }
@@ -101,7 +101,7 @@ public class StatusTrackingServiceTests
         // Update with newer timestamp
         await _statusService.UpdateEdgeNodeOnlineStatus(groupId, edgeNodeId, true, 2, 2000);
 
-        var status = await _statusService.IsOnline(groupId, edgeNodeId, null);
+        var status = await _statusService.IsEndpointOnline(groupId, edgeNodeId, null);
 
         Assert.True(status);
     }
@@ -119,7 +119,7 @@ public class StatusTrackingServiceTests
         await _statusService.UpdateEdgeNodeOnlineStatus(groupId, edgeNodeId, false, 1, 1000);
 
         // Should remain online
-        var status = await _statusService.IsOnline(groupId, edgeNodeId, null);
+        var status = await _statusService.IsEndpointOnline(groupId, edgeNodeId, null);
 
         Assert.True(status);
     }
@@ -137,7 +137,7 @@ public class StatusTrackingServiceTests
         // Set offline status with same bdSeq
         await _statusService.UpdateEdgeNodeOnlineStatus(groupId, edgeNodeId, false, bdSeq, 2000);
 
-        var status = await _statusService.IsOnline(groupId, edgeNodeId, null);
+        var status = await _statusService.IsEndpointOnline(groupId, edgeNodeId, null);
 
         Assert.False(status);
     }
@@ -154,7 +154,7 @@ public class StatusTrackingServiceTests
         // Update offline status with newer timestamp
         await _statusService.UpdateEdgeNodeOnlineStatus(groupId, edgeNodeId, false, 2, 2000);
 
-        var status = await _statusService.IsOnline(groupId, edgeNodeId, null);
+        var status = await _statusService.IsEndpointOnline(groupId, edgeNodeId, null);
 
         Assert.False(status);
     }
@@ -170,7 +170,7 @@ public class StatusTrackingServiceTests
 
         await _statusService.UpdateDeviceOnlineStatus(groupId, edgeNodeId, deviceId, isOnline, timestamp);
 
-        var status = await _statusService.IsOnline(groupId, edgeNodeId, deviceId);
+        var status = await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId);
 
         Assert.True(status);
     }
@@ -188,7 +188,7 @@ public class StatusTrackingServiceTests
         // Update with newer timestamp
         await _statusService.UpdateDeviceOnlineStatus(groupId, edgeNodeId, deviceId, true, 2000);
 
-        var status = await _statusService.IsOnline(groupId, edgeNodeId, deviceId);
+        var status = await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId);
 
         Assert.True(status);
     }
@@ -207,7 +207,7 @@ public class StatusTrackingServiceTests
         await _statusService.UpdateDeviceOnlineStatus(groupId, edgeNodeId, deviceId, false, 1000);
 
         // Should remain online
-        var status = await _statusService.IsOnline(groupId, edgeNodeId, deviceId);
+        var status = await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId);
 
         Assert.True(status);
     }
@@ -226,8 +226,8 @@ public class StatusTrackingServiceTests
         await _statusService.UpdateDeviceOnlineStatus(groupId, edgeNodeId, deviceId, true, 2000);
 
         // Check statuses separately
-        var edgeNodeStatus = await _statusService.IsOnline(groupId, edgeNodeId, null);
-        var deviceStatus = await _statusService.IsOnline(groupId, edgeNodeId, deviceId);
+        var edgeNodeStatus = await _statusService.IsEndpointOnline(groupId, edgeNodeId, null);
+        var deviceStatus = await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId);
 
         Assert.False(edgeNodeStatus);
         Assert.True(deviceStatus);
@@ -247,14 +247,14 @@ public class StatusTrackingServiceTests
         await _statusService.UpdateDeviceOnlineStatus(groupId, edgeNodeId, deviceId, true, 2000);
 
         // Device should be online when EdgeNode is online
-        var deviceStatusBefore = await _statusService.IsOnline(groupId, edgeNodeId, deviceId);
+        var deviceStatusBefore = await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId);
         Assert.True(deviceStatusBefore, "Device should be online when EdgeNode is online");
 
         // Set EdgeNode offline
         await _statusService.UpdateEdgeNodeOnlineStatus(groupId, edgeNodeId, false, 1, 3000);
 
         // Device should now be offline due to EdgeNode going offline
-        var deviceStatusAfter = await _statusService.IsOnline(groupId, edgeNodeId, deviceId);
+        var deviceStatusAfter = await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId);
         Assert.False(deviceStatusAfter, "Device should be offline when EdgeNode goes offline");
     }
 
@@ -270,20 +270,21 @@ public class StatusTrackingServiceTests
         await _statusService.UpdateDeviceOnlineStatus(groupId, edgeNodeId, deviceId, true, 2000);
 
         // Verify both are online
-        Assert.True(await _statusService.IsOnline(groupId, edgeNodeId, null), "EdgeNode should be online");
-        Assert.True(await _statusService.IsOnline(groupId, edgeNodeId, deviceId), "Device should be online");
+        Assert.True(await _statusService.IsEndpointOnline(groupId, edgeNodeId, null), "EdgeNode should be online");
+        Assert.True(await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId), "Device should be online");
 
         // Set EdgeNode offline and verify the Device becomes offline
         await _statusService.UpdateEdgeNodeOnlineStatus(groupId, edgeNodeId, false, 1, 3000);
-        Assert.False(await _statusService.IsOnline(groupId, edgeNodeId, null), "EdgeNode should be offline");
-        Assert.False(await _statusService.IsOnline(groupId, edgeNodeId, deviceId),
+        Assert.False(await _statusService.IsEndpointOnline(groupId, edgeNodeId, null), "EdgeNode should be offline");
+        Assert.False(await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId),
             "Device should be offline when EdgeNode is offline");
 
         // Set EdgeNode online again
         await _statusService.UpdateEdgeNodeOnlineStatus(groupId, edgeNodeId, true, 1, 4000);
-        Assert.True(await _statusService.IsOnline(groupId, edgeNodeId, null),
+        Assert.True(await _statusService.IsEndpointOnline(groupId, edgeNodeId, null),
             "EdgeNode should be online after reconnection");
-        Assert.False(await _statusService.IsOnline(groupId, edgeNodeId, deviceId), "Device should remain offline");
+        Assert.False(await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId),
+            "Device should remain offline");
     }
 
     [Fact]
@@ -302,17 +303,21 @@ public class StatusTrackingServiceTests
         await _statusService.UpdateDeviceOnlineStatus(groupId, edgeNodeId, deviceId2, true, 3000);
 
         // Verify all are online
-        Assert.True(await _statusService.IsOnline(groupId, edgeNodeId, null), "EdgeNode should be online");
-        Assert.True(await _statusService.IsOnline(groupId, edgeNodeId, deviceId1), "First device should be online");
-        Assert.True(await _statusService.IsOnline(groupId, edgeNodeId, deviceId2), "Second device should be online");
+        Assert.True(await _statusService.IsEndpointOnline(groupId, edgeNodeId, null), "EdgeNode should be online");
+        Assert.True(await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId1),
+            "First device should be online");
+        Assert.True(await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId2),
+            "Second device should be online");
 
         // Set EdgeNode offline
         await _statusService.UpdateEdgeNodeOnlineStatus(groupId, edgeNodeId, false, 1, 4000);
 
         // All devices should now be offline due to EdgeNode going offline
-        Assert.False(await _statusService.IsOnline(groupId, edgeNodeId, null), "EdgeNode should be offline");
-        Assert.False(await _statusService.IsOnline(groupId, edgeNodeId, deviceId1), "First device should be offline");
-        Assert.False(await _statusService.IsOnline(groupId, edgeNodeId, deviceId2), "Second device should be offline");
+        Assert.False(await _statusService.IsEndpointOnline(groupId, edgeNodeId, null), "EdgeNode should be offline");
+        Assert.False(await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId1),
+            "First device should be offline");
+        Assert.False(await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId2),
+            "Second device should be offline");
     }
 
     [Fact]
@@ -335,7 +340,7 @@ public class StatusTrackingServiceTests
                     groupId,
                     edgeNodeId,
                     true,
-                    1, // KeepAliveInterval
+                    1,
                     DateTimeOffset.Now.ToUnixTimeMilliseconds());
                 Interlocked.Increment(ref completedEdgeNodeTasks);
             }
@@ -373,7 +378,7 @@ public class StatusTrackingServiceTests
         Assert.Equal(5, completedDeviceTasks);
 
         // Verify statuses were updated correctly
-        Assert.True(await _statusService.IsOnline(groupId, edgeNodeId, null));
-        Assert.True(await _statusService.IsOnline(groupId, edgeNodeId, deviceId));
+        Assert.True(await _statusService.IsEndpointOnline(groupId, edgeNodeId, null));
+        Assert.True(await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId));
     }
 }

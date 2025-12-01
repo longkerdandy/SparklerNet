@@ -6,13 +6,13 @@
 public interface IStatusTrackingService
 {
     /// <summary>
-    ///     Determines if a specific edge node is currently online.
+    ///     Determines if a specific endpoint (EdgeNode or Device) is currently online.
     /// </summary>
     /// <param name="groupId">The group ID</param>
     /// <param name="edgeNodeId">The edge node ID</param>
     /// <param name="deviceId">The device ID (optional)</param>
-    /// <returns>True if the edge node is online, otherwise false.</returns>
-    Task<bool> IsOnline(string groupId, string edgeNodeId, string? deviceId);
+    /// <returns>True if the endpoint is online, otherwise false.</returns>
+    Task<bool> IsEndpointOnline(string groupId, string edgeNodeId, string? deviceId);
 
     /// <summary>
     ///     Updates the online status of a specific edge node.

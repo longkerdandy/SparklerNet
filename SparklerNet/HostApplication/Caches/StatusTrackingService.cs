@@ -23,7 +23,7 @@ public class StatusTrackingService : IStatusTrackingService
     }
 
     /// <inheritdoc />
-    public async Task<bool> IsOnline(string groupId, string edgeNodeId, string? deviceId)
+    public async Task<bool> IsEndpointOnline(string groupId, string edgeNodeId, string? deviceId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
         ArgumentException.ThrowIfNullOrWhiteSpace(edgeNodeId);
