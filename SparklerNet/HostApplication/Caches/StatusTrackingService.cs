@@ -11,7 +11,8 @@ namespace SparklerNet.HostApplication.Caches;
 public class StatusTrackingService : IStatusTrackingService
 {
     private const string StatusKeyPrefix = "sparkplug:status:"; // Prefix for the status cache keys
-    private readonly HybridCache _cache;
+    private const string StatusTag = "sparkplug:tags:status"; // Global tag for all status cache entries
+    private readonly HybridCache _cache; // Hybrid cache for storing endpoint status
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="StatusTrackingService" />
@@ -34,11 +35,15 @@ public class StatusTrackingService : IStatusTrackingService
         // Use SemaphoreSlim for async thread safety
         var semaphore = CacheHelper.GetSemaphore(groupId, edgeNodeId, null);
         await semaphore.WaitAsync();
-            
+
         try
         {
             // Get the status from the cache or create a new entry if it doesn't exist
-            var status = await _cache.GetOrCreateAsync(cacheKey, _ => ValueTask.FromResult<EndpointStatus?>(null));
+            var status = await _cache.GetOrCreateAsync(cacheKey, _ => ValueTask.FromResult<EndpointStatus?>(null),
+                tags: [StatusTag]);
+
+            // If the status is null (meaning it was just created), remove it from cache to avoid storing null values
+            if (status is null) await _cache.RemoveAsync(cacheKey);
 
             // If the status is not in the cache, assume it is offline
             return status is { IsOnline: true };
@@ -71,7 +76,7 @@ public class StatusTrackingService : IStatusTrackingService
         {
             // Get the current status from the cache or create a new entry if it doesn't exist
             var currentStatus = await _cache.GetOrCreateAsync(
-                cacheKey, _ => ValueTask.FromResult(newStatus), tags: [cacheTag]);
+                cacheKey, _ => ValueTask.FromResult(newStatus), tags: [cacheTag, StatusTag]);
 
             // Online status update logic
             if (newStatus.IsOnline)
@@ -79,7 +84,7 @@ public class StatusTrackingService : IStatusTrackingService
                 // Update the cache if the new status is newer than the current status
                 // Note: if the cache is empty, currentStatus will be set to newStatus by GetOrCreateAsync
                 if (newStatus.Timestamp > currentStatus.Timestamp)
-                    await _cache.SetAsync(cacheKey, newStatus, tags: [cacheTag]);
+                    await _cache.SetAsync(cacheKey, newStatus, tags: [cacheTag, StatusTag]);
             }
             // Offline status update logic
             else
@@ -87,7 +92,7 @@ public class StatusTrackingService : IStatusTrackingService
                 // When the current status is offline, update if the new status is newer than the current status
                 // ReSharper disable once ConvertIfStatementToSwitchStatement
                 if (!currentStatus.IsOnline && newStatus.Timestamp > currentStatus.Timestamp)
-                    await _cache.SetAsync(cacheKey, newStatus, tags: [cacheTag]);
+                    await _cache.SetAsync(cacheKey, newStatus, tags: [cacheTag, StatusTag]);
 
                 // When the current status is online, update if:
                 // 1. The new status has the same bdSeq 
@@ -96,7 +101,7 @@ public class StatusTrackingService : IStatusTrackingService
                     (newStatus.BdSeq == currentStatus.BdSeq || newStatus.Timestamp >= currentStatus.Timestamp))
                 {
                     await _cache.RemoveByTagAsync(cacheTag);
-                    await _cache.SetAsync(cacheKey, newStatus, tags: [cacheTag]);
+                    await _cache.SetAsync(cacheKey, newStatus, tags: [cacheTag, StatusTag]);
                 }
             }
         }
@@ -133,18 +138,24 @@ public class StatusTrackingService : IStatusTrackingService
 
             // Get the current status from the cache or create a new entry if it doesn't exist
             var currentStatus = await _cache.GetOrCreateAsync(
-                cacheKey, _ => ValueTask.FromResult(newStatus), tags: [cacheTag]);
+                cacheKey, _ => ValueTask.FromResult(newStatus), tags: [cacheTag, StatusTag]);
 
             // Update the cache if the new status is newer than the current status
             // Note: if the cache is empty, currentStatus will be set to newStatus by GetOrCreateAsync
             if (newStatus.Timestamp > currentStatus.Timestamp)
-                await _cache.SetAsync(cacheKey, newStatus, tags: [cacheTag]);
+                await _cache.SetAsync(cacheKey, newStatus, tags: [cacheTag, StatusTag]);
         }
         finally
         {
             // Always release the semaphore to prevent deadlocks
             semaphore.Release();
         }
+    }
+
+    /// <inheritdoc />
+    public async Task ClearCacheAsync()
+    {
+        await _cache.RemoveByTagAsync(StatusTag);
     }
 
     /// <summary>

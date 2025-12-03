@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Reflection;
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -15,32 +14,7 @@ namespace SparklerNet.Tests.HostApplication.Caches;
 
 public class MessageOrderingCacheTests
 {
-    private readonly MessageOrderingCache _service;
-
-    public MessageOrderingCacheTests()
-    {
-        var options = new SparkplugClientOptions
-        {
-            HostApplicationId = "TestHost",
-            EnableMessageOrdering = true,
-            SeqReorderTimeout = 1000,
-            SendRebirthWhenTimeout = true
-        };
-
-        var services = new ServiceCollection();
-        services.AddMemoryCache();
-        services.AddHybridCache();
-        var serviceProvider = services.BuildServiceProvider();
-        var hybridCache = serviceProvider.GetRequiredService<HybridCache>();
-
-        // Setup mock ILoggerFactory
-        var mockLogger = new Mock<ILogger<MessageOrderingCache>>();
-        var mockLoggerFactory = new Mock<ILoggerFactory>();
-        mockLoggerFactory.Setup(factory => factory.CreateLogger(It.IsAny<string>()))
-            .Returns(mockLogger.Object);
-
-        _service = new MessageOrderingCache(hybridCache, options, mockLoggerFactory.Object);
-    }
+    private readonly MessageOrderingCache _service = CreateMessageOrderingCache();
 
     [Fact]
     public async Task ProcessMessageOrderAsync_ShouldProcessContinuousSequence()
@@ -326,47 +300,16 @@ public class MessageOrderingCacheTests
     public void CreateSequenceCacheEntryOptions_ShouldReturnCorrectOptions()
     {
         // Test with default SeqCacheExpiration (0)
-        var optionsDefault = new SparkplugClientOptions
-        {
-            HostApplicationId = "TestHost",
-            SeqReorderTimeout = 1000,
-            SendRebirthWhenTimeout = true
-        };
-
-        var servicesDefault = new ServiceCollection();
-        servicesDefault.AddMemoryCache();
-        servicesDefault.AddHybridCache();
-        var serviceProviderDefault = servicesDefault.BuildServiceProvider();
-        var hybridCacheDefault = serviceProviderDefault.GetRequiredService<HybridCache>();
-
-        var mockLoggerFactory = new Mock<ILoggerFactory>();
-        mockLoggerFactory.Setup(factory => factory.CreateLogger(It.IsAny<string>()))
-            .Returns(new Mock<ILogger<MessageOrderingCache>>().Object);
-
-        var serviceDefault = new MessageOrderingCache(hybridCacheDefault, optionsDefault, mockLoggerFactory.Object);
+        var serviceDefault = CreateMessageOrderingCache();
 
         // Directly call the protected internal method (visible due to InternalsVisibleTo attribute)
         var resultDefault = serviceDefault.CreateSequenceCacheEntryOptions();
         Assert.NotNull(resultDefault);
-        // Default Expiration is 2 hours for HybridCacheEntryOptions
-        Assert.Equal(TimeSpan.FromHours(2), resultDefault.Expiration);
+        // When SeqCacheExpiration is 0, Expiration should be null (no explicit expiration)
+        Assert.Null(resultDefault.Expiration);
 
         // Test with custom SeqCacheExpiration (30 minutes)
-        var optionsCustom = new SparkplugClientOptions
-        {
-            HostApplicationId = "TestHost",
-            SeqReorderTimeout = 1000,
-            SendRebirthWhenTimeout = true,
-            SeqCacheExpiration = 30 // 30 minutes
-        };
-
-        var servicesCustom = new ServiceCollection();
-        servicesCustom.AddMemoryCache();
-        servicesCustom.AddHybridCache();
-        var serviceProviderCustom = servicesCustom.BuildServiceProvider();
-        var hybridCacheCustom = serviceProviderCustom.GetRequiredService<HybridCache>();
-
-        var serviceCustom = new MessageOrderingCache(hybridCacheCustom, optionsCustom, mockLoggerFactory.Object);
+        var serviceCustom = CreateMessageOrderingCache(seqCacheExpiration: 30);
 
         var resultCustom = serviceCustom.CreateSequenceCacheEntryOptions();
         Assert.NotNull(resultCustom);
@@ -377,25 +320,7 @@ public class MessageOrderingCacheTests
     public async Task OnReorderTimeout_ShouldProcessPendingMessages()
     {
         // Create a message ordering cache with a short timeout
-        var options = new SparkplugClientOptions
-        {
-            HostApplicationId = "TestHost",
-            EnableMessageOrdering = true,
-            SeqReorderTimeout = 100, // Short timeout for testing
-            SendRebirthWhenTimeout = true
-        };
-
-        var services = new ServiceCollection();
-        services.AddMemoryCache();
-        services.AddHybridCache();
-        var serviceProvider = services.BuildServiceProvider();
-        var hybridCache = serviceProvider.GetRequiredService<HybridCache>();
-
-        var mockLoggerFactory = new Mock<ILoggerFactory>();
-        mockLoggerFactory.Setup(factory => factory.CreateLogger(It.IsAny<string>()))
-            .Returns(new Mock<ILogger<MessageOrderingCache>>().Object);
-
-        var service = new MessageOrderingCache(hybridCache, options, mockLoggerFactory.Object);
+        var service = CreateMessageOrderingCache(100);
 
         // Create messages with a sequence gap
         var message1 = CreateMessageEventArgs(1);
@@ -435,25 +360,7 @@ public class MessageOrderingCacheTests
     public async Task OnReorderTimeout_ShouldSendRebirthRequest()
     {
         // Create a message ordering cache with a short timeout
-        var options = new SparkplugClientOptions
-        {
-            HostApplicationId = "TestHost",
-            EnableMessageOrdering = true,
-            SeqReorderTimeout = 100, // Short timeout for testing
-            SendRebirthWhenTimeout = true
-        };
-
-        var services = new ServiceCollection();
-        services.AddMemoryCache();
-        services.AddHybridCache();
-        var serviceProvider = services.BuildServiceProvider();
-        var hybridCache = serviceProvider.GetRequiredService<HybridCache>();
-
-        var mockLoggerFactory = new Mock<ILoggerFactory>();
-        mockLoggerFactory.Setup(factory => factory.CreateLogger(It.IsAny<string>()))
-            .Returns(new Mock<ILogger<MessageOrderingCache>>().Object);
-
-        var service = new MessageOrderingCache(hybridCache, options, mockLoggerFactory.Object);
+        var service = CreateMessageOrderingCache(100);
 
         // Create messages with a sequence gap
         var message1 = CreateMessageEventArgs(1);
@@ -467,11 +374,10 @@ public class MessageOrderingCacheTests
         string? rebirthGroupId = null;
         string? rebirthEdgeNodeId = null;
         string? rebirthDeviceId = null;
-        service.OnRebirthRequested = (groupId, edgeNodeId, deviceId) =>
+        service.OnRebirthRequested = (groupId, edgeNodeId) =>
         {
             rebirthGroupId = groupId;
             rebirthEdgeNodeId = edgeNodeId;
-            rebirthDeviceId = deviceId;
             return Task.CompletedTask;
         };
 
@@ -537,25 +443,7 @@ public class MessageOrderingCacheTests
     public async Task CachePendingMessageAsync_ShouldManageTimersCorrectly()
     {
         // Create a message ordering cache with a long timeout
-        var options = new SparkplugClientOptions
-        {
-            HostApplicationId = "TestHost",
-            EnableMessageOrdering = true,
-            SeqReorderTimeout = 10000, // Long timeout for testing
-            SendRebirthWhenTimeout = true
-        };
-
-        var services = new ServiceCollection();
-        services.AddMemoryCache();
-        services.AddHybridCache();
-        var serviceProvider = services.BuildServiceProvider();
-        var hybridCache = serviceProvider.GetRequiredService<HybridCache>();
-
-        var mockLoggerFactory = new Mock<ILoggerFactory>();
-        mockLoggerFactory.Setup(factory => factory.CreateLogger(It.IsAny<string>()))
-            .Returns(new Mock<ILogger<MessageOrderingCache>>().Object);
-
-        var service = new MessageOrderingCache(hybridCache, options, mockLoggerFactory.Object);
+        var service = CreateMessageOrderingCache(10000);
 
         // Get the _reorderTimers field using reflection
         var reorderTimersField = typeof(MessageOrderingCache).GetField("_reorderTimers",
@@ -644,6 +532,34 @@ public class MessageOrderingCacheTests
         Assert.Equal(4, processResult[2].Payload.Seq);
     }
 
+    [Fact]
+    public async Task ClearCacheAsync_ShouldClearAllOrderingCache()
+    {
+        var message1 = CreateMessageEventArgs(1);
+        var message3 = CreateMessageEventArgs(3);
+
+        // Process messages to populate the cache
+        var result1 = await _service.ProcessMessageOrderAsync(message1);
+        var result3 = await _service.ProcessMessageOrderAsync(message3);
+
+        // Verify cache has been populated
+        Assert.Single(result1);
+        Assert.Empty(result3); // Message 3 should be cached
+
+        // Call ClearCacheAsync to clear all cache
+        await _service.ClearCacheAsync();
+
+        // Process new messages after cache clear
+        var message2 = CreateMessageEventArgs(2);
+        var result2AfterClear = await _service.ProcessMessageOrderAsync(message2);
+
+        // Verify cache has been cleared; message 2 is processed as a new sequence
+        Assert.Single(result2AfterClear);
+        Assert.Equal(2, result2AfterClear[0].Payload.Seq);
+        Assert.True(result2AfterClear[0].IsSeqConsecutive);
+        Assert.False(result2AfterClear[0].IsCached);
+    }
+    
     private static SparkplugMessageEventArgs CreateMessageEventArgs(int sequenceNumber,
         SparkplugMessageType messageType = SparkplugMessageType.NDATA)
     {
@@ -660,5 +576,34 @@ public class MessageOrderingCacheTests
             "Device1",
             payload
         );
+    }
+    
+    private static MessageOrderingCache CreateMessageOrderingCache(
+        int seqReorderTimeout = 1000,
+        int seqCacheExpiration = 0,
+        string hostApplicationId = "TestHost")
+    {
+        var options = new SparkplugClientOptions
+        {
+            HostApplicationId = hostApplicationId,
+            EnableMessageOrdering = true,
+            SeqReorderTimeout = seqReorderTimeout,
+            SendRebirthWhenTimeout = true,
+            SeqCacheExpiration = seqCacheExpiration
+        };
+
+        var services = new ServiceCollection();
+        services.AddMemoryCache();
+        services.AddHybridCache();
+        services.AddSingleton(options);
+
+        var mockLoggerFactory = new Mock<ILoggerFactory>();
+        mockLoggerFactory.Setup(factory => factory.CreateLogger(It.IsAny<string>()))
+            .Returns(new Mock<ILogger<MessageOrderingCache>>().Object);
+        services.AddSingleton(mockLoggerFactory.Object);
+        services.AddSingleton<MessageOrderingCache>();
+
+        var serviceProvider = services.BuildServiceProvider();
+        return serviceProvider.GetRequiredService<MessageOrderingCache>();
     }
 }

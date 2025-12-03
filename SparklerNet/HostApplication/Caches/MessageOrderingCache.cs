@@ -18,6 +18,7 @@ public class MessageOrderingCache : IMessageOrderingCache
 {
     private const string SequenceKeyPrefix = "sparkplug:seq:"; // Prefix for the sequence number cache keys
     private const string PendingKeyPrefix = "sparkplug:pending:"; // Prefix for the pending messages cache keys
+    private const string OrderingTag = "sparkplug:tags:ordering"; // Global tag for all message ordering cache entries
     private const int SequenceNumberRange = 256; // Valid sequence number range (0-255) as defined in Sparkplug spec
     private readonly HybridCache _cache; // Hybrid cache for storing sequence states and pending messages
     private readonly ILogger<MessageOrderingCache> _logger; // Logger for the service
@@ -122,6 +123,17 @@ public class MessageOrderingCache : IMessageOrderingCache
         }
     }
 
+    /// <inheritdoc />
+    public async Task ClearCacheAsync()
+    {
+        // Clear all message ordering related cache entries using the global tag
+        await _cache.RemoveByTagAsync(OrderingTag);
+
+        // Dispose all reorder timers to prevent memory leaks
+        foreach (var timer in _reorderTimers.Values) await timer.DisposeAsync();
+        _reorderTimers.Clear();
+    }
+
     /// <summary>
     ///     Handles message reordering timeout events, triggered when a gap in sequence numbers persists beyond the configured
     ///     timeout
@@ -171,7 +183,7 @@ public class MessageOrderingCache : IMessageOrderingCache
 
         // Send the rebirth request if the option is enabled
         if (_options.SendRebirthWhenTimeout && OnRebirthRequested != null)
-            await OnRebirthRequested.Invoke(groupId, edgeNodeId, deviceId);
+            await OnRebirthRequested.Invoke(groupId, edgeNodeId);
     }
 
     /// <summary>
@@ -185,7 +197,7 @@ public class MessageOrderingCache : IMessageOrderingCache
         var cacheKey = CacheHelper.BuildCacheKey(SequenceKeyPrefix, message.GroupId, message.EdgeNodeId, null);
 
         // Check if the current sequence is continuous with the previously recorded sequence
-        var previousSeq = await _cache.GetOrCreateAsync(cacheKey, _ => ValueTask.FromResult(-1));
+        var previousSeq = await _cache.GetOrCreateAsync(cacheKey, _ => ValueTask.FromResult(-1), tags: [OrderingTag]);
         if (previousSeq != -1)
         {
             // Calculate the next expected sequence number with wrap-around
@@ -196,7 +208,7 @@ public class MessageOrderingCache : IMessageOrderingCache
 
         // Update the cache with the current sequence number
         // If configured, also set an expiration for the sequence number cache entry
-        await _cache.SetAsync(cacheKey, message.Payload.Seq, CreateSequenceCacheEntryOptions());
+        await _cache.SetAsync(cacheKey, message.Payload.Seq, CreateSequenceCacheEntryOptions(), [OrderingTag]);
         return true;
     }
 
@@ -213,7 +225,8 @@ public class MessageOrderingCache : IMessageOrderingCache
         // Get existing pending messages or create a new sorted collection with circular sequence ordering
         var pendingMessages = await _cache.GetOrCreateAsync(pendingKey,
             _ => ValueTask.FromResult(
-                new SortedDictionary<int, SparkplugMessageEventArgs>(new CircularSequenceComparer())));
+                new SortedDictionary<int, SparkplugMessageEventArgs>(new CircularSequenceComparer())),
+            tags: [OrderingTag]);
 
         // Add or update the message with this sequence number
         // If the sequence number already exists, the existing message will be returned
@@ -221,7 +234,7 @@ public class MessageOrderingCache : IMessageOrderingCache
         pendingMessages.TryReplace(message.Payload.Seq, message, out var result);
 
         // Cache the updated pending messages
-        await _cache.SetAsync(pendingKey, pendingMessages);
+        await _cache.SetAsync(pendingKey, pendingMessages, tags: [OrderingTag]);
         _logger.LogDebug(
             "{MessageType} message cached due to sequence gap: Group={Group}, Node={Node}, Device={Device}, Seq={Seq}",
             message.MessageType, message.GroupId, message.EdgeNodeId, message.DeviceId ?? "<none>",
@@ -278,7 +291,8 @@ public class MessageOrderingCache : IMessageOrderingCache
 
         // Get existing pending messages
         var pendingMessages = await _cache.GetOrCreateAsync(pendingKey,
-            _ => ValueTask.FromResult<SortedDictionary<int, SparkplugMessageEventArgs>?>(null));
+            _ => ValueTask.FromResult<SortedDictionary<int, SparkplugMessageEventArgs>?>(null),
+            tags: [OrderingTag]);
 
         // If no pending messages, remove the cache entry and return an empty result
         if (pendingMessages == null || pendingMessages.Count == 0)
@@ -316,14 +330,14 @@ public class MessageOrderingCache : IMessageOrderingCache
 
         // Update the cache with the new sequence after processing all continuous messages
         // If configured, also set an expiration for the sequence number cache entry
-        await _cache.SetAsync(seqKey, currentSeq, CreateSequenceCacheEntryOptions());
+        await _cache.SetAsync(seqKey, currentSeq, CreateSequenceCacheEntryOptions(), tags: [OrderingTag]);
 
         // Update or remove pending messages cache and handle timer accordingly
         // ReSharper disable once ConvertIfStatementToSwitchStatement
         if (pendingMessages.Count > 0 && result.Count > 0)
         {
             // Still have pending messages and size changed, update cache and reset timer
-            await _cache.SetAsync(pendingKey, pendingMessages);
+            await _cache.SetAsync(pendingKey, pendingMessages, tags: [OrderingTag]);
             _reorderTimers.AddOrUpdate(timerKey,
                 _ => new Timer(OnReorderTimeout, timerKey, _options.SeqReorderTimeout, Timeout.Infinite),
                 (_, existingTimer) =>

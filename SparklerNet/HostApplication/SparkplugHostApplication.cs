@@ -1,7 +1,5 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Google.Protobuf;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
 using MQTTnet.Formatter;
@@ -32,24 +30,22 @@ namespace SparklerNet.HostApplication;
 public class SparkplugHostApplication
 {
     private readonly SparkplugMessageEvents _events = new();
-
     private readonly ILogger<SparkplugHostApplication> _logger;
-
     private readonly MqttClientOptions _mqttOptions;
-
-    [SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance")]
-    private readonly IMessageOrderingService _msgOrderingService;
-
+    private readonly IMessageOrderingCache _orderingService;
     private readonly SparkplugClientOptions _sparkplugOptions;
+    private readonly IStatusTrackingService _trackingService;
 
     /// <summary>
     ///     Create a new instance of the Sparkplug Host Application.
     /// </summary>
     /// <param name="mqttOptions">The MQTT Client Options.</param>
     /// <param name="sparkplugOptions">The Sparkplug Client Options.</param>
+    /// <param name="orderingService">The Message Ordering Service.</param>
+    /// <param name="trackingService">The Status Tracking Service.</param>
     /// <param name="loggerFactory">The Logger Factory.</param>
     public SparkplugHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions,
-        ILoggerFactory loggerFactory)
+        IMessageOrderingCache orderingService, IStatusTrackingService trackingService, ILoggerFactory loggerFactory)
     {
         // Validate sparkplugOptions
         SparkplugNamespace.ValidateNamespaceElement(sparkplugOptions.HostApplicationId,
@@ -57,8 +53,8 @@ public class SparkplugHostApplication
 
         _mqttOptions = mqttOptions;
         _sparkplugOptions = sparkplugOptions;
-        var memoryCache = new MemoryCache(new MemoryCacheOptions());
-        _msgOrderingService = new MessageOrderingService(memoryCache, _sparkplugOptions, loggerFactory);
+        _orderingService = orderingService;
+        _trackingService = trackingService;
         _logger = loggerFactory.CreateLogger<SparkplugHostApplication>();
 
         // Create a new MQTT client.
@@ -70,8 +66,8 @@ public class SparkplugHostApplication
         MqttClient.DisconnectedAsync += HandleDisconnectedAsync;
 
         // Set the rebirth message request delegate and the pending messages processed delegate 
-        _msgOrderingService.OnRebirthRequested = HandleRebirthRequested;
-        _msgOrderingService.OnPendingMessages = HandlePendingMessages;
+        _orderingService.OnRebirthRequested = HandleRebirthRequested;
+        _orderingService.OnPendingMessages = HandlePendingMessages;
     }
 
     // MQTT Client
@@ -82,28 +78,27 @@ public class SparkplugHostApplication
     /// </summary>
     /// <param name="groupId">The group ID of the entity requiring rebirth</param>
     /// <param name="edgeNodeId">The edge node ID of the entity requiring rebirth</param>
-    /// <param name="deviceId">The device ID of the entity requiring rebirth (optional)</param>
-    private async Task HandleRebirthRequested(string groupId, string edgeNodeId, string? deviceId = null)
+    private async Task HandleRebirthRequested(string groupId, string edgeNodeId)
     {
         try
         {
-            if (deviceId != null) await this.PublishDeviceRebirthCommandAsync(groupId, edgeNodeId, deviceId);
-            else await this.PublishEdgeNodeRebirthCommandAsync(groupId, edgeNodeId);
+            await this.PublishEdgeNodeRebirthCommandAsync(groupId, edgeNodeId);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "Exception occurred while sending rebirth command. GroupId: {GroupId}, EdgeNodeId: {EdgeNodeId}, DeviceId: {DeviceId}",
-                groupId, edgeNodeId, deviceId);
+                "Exception occurred while sending rebirth command. GroupId: {GroupId}, EdgeNodeId: {EdgeNodeId}",
+                groupId, edgeNodeId);
         }
     }
 
     /// <summary>
-    ///     Processes data messages (NDATA and DDATA) and invokes the appropriate event.
-    ///     When the ProcessDisorderedMessages option is enabled, pending messages will be processed in the order they were
-    ///     received.
+    ///     Processes pending messages (NDATA DDATA DBIRTH & DDEATH) and invokes the appropriate event.
+    ///     When the EnableMessageOrdering option is enabled, discontinuous messages will be cached until their sequence is
+    ///     completed or a timeout is reached. When the EnableMessageOrdering option is disabled, messages will be processed
+    ///     directly in the order they arrive.
     /// </summary>
-    /// <param name="messages">The collection of NDATA and DDATA messages to process.</param>
+    /// <param name="messages">The collection of messages to process.</param>
     private async Task HandlePendingMessages(IEnumerable<SparkplugMessageEventArgs> messages)
     {
         foreach (var message in messages)
@@ -114,6 +109,8 @@ public class SparkplugHostApplication
                 {
                     NDATA => _events.EdgeNodeDataReceivedEvent.InvokeAsync(message),
                     DDATA => _events.DeviceDataReceivedEvent.InvokeAsync(message),
+                    DBIRTH => _events.DeviceBirthReceivedEvent.InvokeAsync(message),
+                    DDEATH => _events.DeviceDeathReceivedEvent.InvokeAsync(message),
                     _ => Task.CompletedTask // Other message types are ignored
                 });
             }
@@ -185,12 +182,10 @@ public class SparkplugHostApplication
         await PublishStateMessageAsync(false, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         await MqttClient.DisconnectAsync();
 
-        // If the ProcessDisorderedMessages option is enabled, clear the cache and process pending messages
-        if (_sparkplugOptions.EnableMessageOrdering)
-        {
-            var pendingMessages = _msgOrderingService.GetAllMessagesAndClearCache();
-            await HandlePendingMessages(pendingMessages);
-        }
+        // Clear the caches
+        await _orderingService.ClearCacheAsync();
+        await _trackingService.ClearCacheAsync();
+        CacheHelper.ClearSemaphores();
 
         _logger.LogInformation("Successfully stopped Sparkplug Host Application {HostApplicationId}.",
             _sparkplugOptions.HostApplicationId);
@@ -469,7 +464,7 @@ public class SparkplugHostApplication
     {
         // Initialize the pending messages based on the message ordering configuration
         var messages = _sparkplugOptions.EnableMessageOrdering
-            ? _msgOrderingService.ProcessMessageOrder(message)
+            ? await _orderingService.ProcessMessageOrderAsync(message)
             : [message];
 
         // Process all messages in order
@@ -486,27 +481,47 @@ public class SparkplugHostApplication
     /// <returns>A task that represents the asynchronous operation.</returns>
     private async Task ProcessBirthDeathMessagesAsync(SparkplugMessageEventArgs message)
     {
-        if (_sparkplugOptions.EnableMessageOrdering)
-            // Clear message order cache for the edge node or device
-            _msgOrderingService.ClearMessageOrder(message.GroupId, message.EdgeNodeId, message.DeviceId);
+        if (message.MessageType is NBIRTH or NDEATH)
+        {
+            // Update the Edge Node online status
+            await _trackingService.UpdateEdgeNodeOnlineStatus(message.GroupId, message.EdgeNodeId,
+                message.MessageType == NBIRTH, message.Payload.GetBdSeq(), message.Payload.Timestamp);
 
-        try
-        {
-            // Raise the appropriate event
-            await (message.MessageType switch
+            if (_sparkplugOptions.EnableMessageOrdering)
+                // Reset the message order cache for the edge node
+                await _orderingService.ResetMessageOrderAsync(message.GroupId, message.EdgeNodeId);
+
+            try
             {
-                NBIRTH => _events.EdgeNodeBirthReceivedEvent.InvokeAsync(message),
-                NDEATH => _events.EdgeNodeDeathReceivedEvent.InvokeAsync(message),
-                DBIRTH => _events.DeviceBirthReceivedEvent.InvokeAsync(message),
-                DDEATH => _events.DeviceDeathReceivedEvent.InvokeAsync(message),
-                _ => Task.CompletedTask // This case should never be reached due to the method's caller check
-            });
+                // Raise the appropriate event
+                await (message.MessageType switch
+                {
+                    NBIRTH => _events.EdgeNodeBirthReceivedEvent.InvokeAsync(message),
+                    NDEATH => _events.EdgeNodeDeathReceivedEvent.InvokeAsync(message),
+                    _ => Task.CompletedTask // This case should never be reached due to the method's caller check
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Exception occurred while handling message received event. GroupId: {GroupId}, EdgeNodeId: {EdgeNodeId}, DeviceId: {DeviceId}",
+                    message.GroupId, message.EdgeNodeId, message.DeviceId);
+            }
         }
-        catch (Exception ex)
+
+        if (message.MessageType is DBIRTH or DDEATH)
         {
-            _logger.LogWarning(ex,
-                "Exception occurred while handling message received event. GroupId: {GroupId}, EdgeNodeId: {EdgeNodeId}, DeviceId: {DeviceId}",
-                message.GroupId, message.EdgeNodeId, message.DeviceId);
+            // Update the Edge Node online status
+            await _trackingService.UpdateDeviceOnlineStatus(message.GroupId, message.EdgeNodeId, message.DeviceId!,
+                message.MessageType == DBIRTH, message.Payload.Timestamp);
+
+            // Initialize the pending messages based on the message ordering configuration
+            var messages = _sparkplugOptions.EnableMessageOrdering
+                ? await _orderingService.ProcessMessageOrderAsync(message)
+                : [message];
+
+            // Process all messages in order
+            await HandlePendingMessages(messages);
         }
     }
 

@@ -3,6 +3,19 @@ using SparklerNet.Core.Events;
 namespace SparklerNet.HostApplication.Caches;
 
 /// <summary>
+///     Delegate for handling Rebirth requests when a message gap is detected or timeout occurs
+/// </summary>
+/// <param name="groupId">The group ID of the entity requiring rebirth</param>
+/// <param name="edgeNodeId">The edge node ID of the entity requiring rebirth</param>
+public delegate Task RebirthRequestCallback(string groupId, string edgeNodeId);
+
+/// <summary>
+///     Delegate for notifying when pending messages have been processed and are ready for consumption
+/// </summary>
+/// <param name="messages">The collection of pending messages that are now ready for processing</param>
+public delegate Task PendingMessagesCallback(IEnumerable<SparkplugMessageEventArgs> messages);
+
+/// <summary>
 ///     Interface for managing message ordering by caching and validating sequence numbers.
 ///     Ensures NDATA, DDATA, DBIRTH, and DDEATH messages are processed sequentially per Sparkplug specification.
 /// </summary>
@@ -36,4 +49,9 @@ public interface IMessageOrderingCache
     /// <param name="groupId">The group ID</param>
     /// <param name="edgeNodeId">The edge node ID</param>
     Task ResetMessageOrderAsync(string groupId, string edgeNodeId);
+
+    /// <summary>
+    ///     Clears all message ordering related cache entries.
+    /// </summary>
+    Task ClearCacheAsync();
 }
