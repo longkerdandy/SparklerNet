@@ -12,9 +12,9 @@ using Xunit;
 
 namespace SparklerNet.Tests.HostApplication.Caches;
 
-public class MessageOrderingCacheTests
+public class MessageOrderingServiceTests
 {
-    private readonly MessageOrderingCache _service = CreateMessageOrderingCache();
+    private readonly MessageOrderingService _service = CreateMessageOrderingCache();
 
     [Fact]
     public async Task ProcessMessageOrderAsync_ShouldProcessContinuousSequence()
@@ -274,7 +274,7 @@ public class MessageOrderingCacheTests
     [Fact]
     public void CircularSequenceComparer_ShouldCompareCorrectly()
     {
-        var comparer = new MessageOrderingCache.CircularSequenceComparer();
+        var comparer = new MessageOrderingService.CircularSequenceComparer();
 
         // Normal integer comparison cases
         Assert.Equal(-1, comparer.Compare(10, 20));
@@ -340,7 +340,7 @@ public class MessageOrderingCacheTests
 
         // Call OnReorderTimeout directly with the timer key
         var timerKey = "Group1:Edge1";
-        var methodInfo = typeof(MessageOrderingCache).GetMethod("OnReorderTimeout",
+        var methodInfo = typeof(MessageOrderingService).GetMethod("OnReorderTimeout",
             BindingFlags.NonPublic | BindingFlags.Instance);
         Assert.NotNull(methodInfo);
 
@@ -383,7 +383,7 @@ public class MessageOrderingCacheTests
 
         // Call OnReorderTimeout directly with the timer key
         var timerKey = "Group1:Edge1";
-        var methodInfo = typeof(MessageOrderingCache).GetMethod("OnReorderTimeout",
+        var methodInfo = typeof(MessageOrderingService).GetMethod("OnReorderTimeout",
             BindingFlags.NonPublic | BindingFlags.Instance);
         Assert.NotNull(methodInfo);
 
@@ -446,7 +446,7 @@ public class MessageOrderingCacheTests
         var service = CreateMessageOrderingCache(10000);
 
         // Get the _reorderTimers field using reflection
-        var reorderTimersField = typeof(MessageOrderingCache).GetField("_reorderTimers",
+        var reorderTimersField = typeof(MessageOrderingService).GetField("_reorderTimers",
             BindingFlags.NonPublic | BindingFlags.Instance);
         Assert.NotNull(reorderTimersField);
 
@@ -508,7 +508,7 @@ public class MessageOrderingCacheTests
 
         // Get and process pending messages with seq = 1 (should process 2, 3, 4)
         // We need to call this method via reflection since it's private
-        var methodInfo = typeof(MessageOrderingCache).GetMethod("GetPendingMessagesAsync",
+        var methodInfo = typeof(MessageOrderingService).GetMethod("GetPendingMessagesAsync",
             BindingFlags.NonPublic | BindingFlags.Instance);
         Assert.NotNull(methodInfo);
 
@@ -578,7 +578,7 @@ public class MessageOrderingCacheTests
         );
     }
     
-    private static MessageOrderingCache CreateMessageOrderingCache(
+    private static MessageOrderingService CreateMessageOrderingCache(
         int seqReorderTimeout = 1000,
         int seqCacheExpiration = 0,
         string hostApplicationId = "TestHost")
@@ -599,11 +599,11 @@ public class MessageOrderingCacheTests
 
         var mockLoggerFactory = new Mock<ILoggerFactory>();
         mockLoggerFactory.Setup(factory => factory.CreateLogger(It.IsAny<string>()))
-            .Returns(new Mock<ILogger<MessageOrderingCache>>().Object);
+            .Returns(new Mock<ILogger<MessageOrderingService>>().Object);
         services.AddSingleton(mockLoggerFactory.Object);
-        services.AddSingleton<MessageOrderingCache>();
+        services.AddSingleton<MessageOrderingService>();
 
         var serviceProvider = services.BuildServiceProvider();
-        return serviceProvider.GetRequiredService<MessageOrderingCache>();
+        return serviceProvider.GetRequiredService<MessageOrderingService>();
     }
 }

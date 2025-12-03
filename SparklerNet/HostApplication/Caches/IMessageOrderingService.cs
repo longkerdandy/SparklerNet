@@ -19,7 +19,7 @@ public delegate Task PendingMessagesCallback(IEnumerable<SparkplugMessageEventAr
 ///     Interface for managing message ordering by caching and validating sequence numbers.
 ///     Ensures NDATA, DDATA, DBIRTH, and DDEATH messages are processed sequentially per Sparkplug specification.
 /// </summary>
-public interface IMessageOrderingCache
+public interface IMessageOrderingService
 {
     /// <summary>
     ///     Gets or sets the delegate to be called when a Rebirth message needs to be sent due to detected message gaps

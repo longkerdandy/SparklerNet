@@ -32,7 +32,7 @@ public class SparkplugHostApplication
     private readonly SparkplugMessageEvents _events = new();
     private readonly ILogger<SparkplugHostApplication> _logger;
     private readonly MqttClientOptions _mqttOptions;
-    private readonly IMessageOrderingCache _orderingService;
+    private readonly IMessageOrderingService _orderingService;
     private readonly SparkplugClientOptions _sparkplugOptions;
     private readonly IStatusTrackingService _trackingService;
 
@@ -45,7 +45,7 @@ public class SparkplugHostApplication
     /// <param name="trackingService">The Status Tracking Service.</param>
     /// <param name="loggerFactory">The Logger Factory.</param>
     public SparkplugHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions,
-        IMessageOrderingCache orderingService, IStatusTrackingService trackingService, ILoggerFactory loggerFactory)
+        IMessageOrderingService orderingService, IStatusTrackingService trackingService, ILoggerFactory loggerFactory)
     {
         // Validate sparkplugOptions
         SparkplugNamespace.ValidateNamespaceElement(sparkplugOptions.HostApplicationId,

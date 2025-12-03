@@ -14,30 +14,30 @@ namespace SparklerNet.HostApplication.Caches;
 ///     Ensures NDATA, DDATA, DBIRTH, and DDEATH messages are processed sequentially per Sparkplug specification.
 ///     Uses HybridCache for efficient in-memory and distributed caching of sequence states and pending messages.
 /// </summary>
-public class MessageOrderingCache : IMessageOrderingCache
+public class MessageOrderingService : IMessageOrderingService
 {
     private const string SequenceKeyPrefix = "sparkplug:seq:"; // Prefix for the sequence number cache keys
     private const string PendingKeyPrefix = "sparkplug:pending:"; // Prefix for the pending messages cache keys
     private const string OrderingTag = "sparkplug:tags:ordering"; // Global tag for all message ordering cache entries
     private const int SequenceNumberRange = 256; // Valid sequence number range (0-255) as defined in Sparkplug spec
     private readonly HybridCache _cache; // Hybrid cache for storing sequence states and pending messages
-    private readonly ILogger<MessageOrderingCache> _logger; // Logger for the service
+    private readonly ILogger<MessageOrderingService> _logger; // Logger for the service
     private readonly SparkplugClientOptions _options; // Configuration options for the service
 
     // Timer collection for handling message reordering timeouts
     private readonly ConcurrentDictionary<string, Timer> _reorderTimers = new();
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="MessageOrderingCache" />
+    ///     Initializes a new instance of the <see cref="MessageOrderingService" />
     /// </summary>
     /// <param name="cache">The hybrid cache instance for storing sequence states and pending messages</param>
     /// <param name="options">The Sparkplug client options containing reordering configuration</param>
     /// <param name="loggerFactory">The logger factory to create the logger</param>
-    public MessageOrderingCache(HybridCache cache, SparkplugClientOptions options, ILoggerFactory loggerFactory)
+    public MessageOrderingService(HybridCache cache, SparkplugClientOptions options, ILoggerFactory loggerFactory)
     {
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _options = options ?? throw new ArgumentNullException(nameof(options));
-        _logger = loggerFactory.CreateLogger<MessageOrderingCache>() ??
+        _logger = loggerFactory.CreateLogger<MessageOrderingService>() ??
                   throw new ArgumentNullException(nameof(loggerFactory));
     }
 
