@@ -41,6 +41,10 @@ internal static class Program
         services.AddSingleton(sparkplugOptions);
         services.AddSingleton(loggerFactory);
         services.AddSingleton<ILoggerFactory>(loggerFactory);
+        
+        // Register cache services
+        services.AddMemoryCache();
+        services.AddHybridCache();
 
         // Register the SparklerNet services
         services.AddSingleton<IMessageOrderingService, MessageOrderingService>();

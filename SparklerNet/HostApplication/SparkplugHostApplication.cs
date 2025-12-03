@@ -511,7 +511,7 @@ public class SparkplugHostApplication
 
         if (message.MessageType is DBIRTH or DDEATH)
         {
-            // Update the Edge Node online status
+            // Update the Device online status
             await _trackingService.UpdateDeviceOnlineStatus(message.GroupId, message.EdgeNodeId, message.DeviceId!,
                 message.MessageType == DBIRTH, message.Payload.Timestamp);
 
