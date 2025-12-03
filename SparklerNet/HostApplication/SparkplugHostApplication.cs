@@ -428,8 +428,7 @@ public class SparkplugHostApplication
             var protoPayload = ProtoPayload.Parser.ParseFrom(eventArgs.ApplicationMessage.Payload);
             var payload = protoPayload.ToPayload();
 
-            var message = new SparkplugMessageEventArgs(version, messageType, groupId!, edgeNodeId!, deviceId, payload,
-                eventArgs);
+            var message = new SparkplugMessageEventArgs(version, messageType, groupId!, edgeNodeId!, deviceId, payload);
 
             // Process messages based on the message type
             await (messageType switch

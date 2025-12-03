@@ -1,4 +1,3 @@
-using MQTTnet;
 using SparklerNet.Core.Constants;
 using SparklerNet.Core.Model;
 
@@ -17,7 +16,6 @@ namespace SparklerNet.Core.Events;
 /// <param name="edgeNodeId">The Edge Node ID</param>
 /// <param name="deviceId">The Device ID (optional)</param>
 /// <param name="payload">The message payload</param>
-/// <param name="eventArgs">The original MQTT message received event arguments</param>
 /// <param name="isSeqConsecutive">Indicates whether the message sequence number is consecutive</param>
 /// <param name="isCached">Indicates whether the message is cached</param>
 /// <param name="timestamp">The timestamp when the message was received on the application layer in milliseconds</param>
@@ -28,7 +26,6 @@ public class SparkplugMessageEventArgs(
     string edgeNodeId,
     string? deviceId,
     Payload payload,
-    MqttApplicationMessageReceivedEventArgs eventArgs,
     bool isSeqConsecutive = true,
     bool isCached = false,
     long timestamp = 0) : EventArgs
@@ -62,11 +59,6 @@ public class SparkplugMessageEventArgs(
     ///     The message payload
     /// </summary>
     public Payload Payload { get; init; } = payload;
-
-    /// <summary>
-    ///     The original MQTT message received event arguments
-    /// </summary>
-    public MqttApplicationMessageReceivedEventArgs EventArgs { get; init; } = eventArgs;
 
     /// <summary>
     ///     Indicates whether the message sequence number is consecutive to the expected sequence number

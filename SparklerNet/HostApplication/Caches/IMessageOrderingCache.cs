@@ -1,0 +1,39 @@
+using SparklerNet.Core.Events;
+
+namespace SparklerNet.HostApplication.Caches;
+
+/// <summary>
+///     Interface for managing message ordering by caching and validating sequence numbers.
+///     Ensures NDATA, DDATA, DBIRTH, and DDEATH messages are processed sequentially per Sparkplug specification.
+/// </summary>
+public interface IMessageOrderingCache
+{
+    /// <summary>
+    ///     Gets or sets the delegate to be called when a Rebirth message needs to be sent due to detected message gaps
+    /// </summary>
+    RebirthRequestCallback? OnRebirthRequested { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the delegate to be called when pending messages have been processed and are ready for consumption
+    /// </summary>
+    PendingMessagesCallback? OnPendingMessages { get; set; }
+
+    /// <summary>
+    ///     Processes the message in the correct order, handling both continuous and non-continuous sequences
+    ///     Messages with continuous sequence numbers are processed immediately
+    ///     Messages with gaps in sequence are cached for later processing when the gap is filled
+    ///     NDATA DDATA DBIRTH and DDEATH messages will be processed here when Message Ordering enabled
+    /// </summary>
+    /// <param name="message">The message context to process</param>
+    /// <returns>List of messages that can be processed (current message if continuous and any continuous pending messages)</returns>
+    Task<List<SparkplugMessageEventArgs>> ProcessMessageOrderAsync(SparkplugMessageEventArgs message);
+
+    /// <summary>
+    ///     Reset the message order and clear the pending messages for the specific edge node
+    ///     Also cleans up any associated timer resources
+    ///     NBIRTH and NDEATH messages will be processed here when Message Ordering enabled
+    /// </summary>
+    /// <param name="groupId">The group ID</param>
+    /// <param name="edgeNodeId">The edge node ID</param>
+    Task ResetMessageOrderAsync(string groupId, string edgeNodeId);
+}

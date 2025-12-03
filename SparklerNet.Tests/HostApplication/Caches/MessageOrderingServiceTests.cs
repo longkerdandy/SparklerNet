@@ -458,8 +458,7 @@ public class MessageOrderingServiceTests
             "Group1",
             "Edge1",
             "Device1",
-            payload,
-            null!
+            payload
         );
     }
 }
