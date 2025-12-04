@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
 using SparklerNet.HostApplication.Caches;
 using Xunit;
@@ -14,11 +13,11 @@ public class StatusTrackingServiceTests
     public StatusTrackingServiceTests()
     {
         var services = new ServiceCollection();
+        services.AddMemoryCache();
         services.AddHybridCache();
-
+        services.AddSingleton<StatusTrackingService>();
         var serviceProvider = services.BuildServiceProvider();
-        var cache = serviceProvider.GetRequiredService<HybridCache>();
-        _statusService = new StatusTrackingService(cache);
+        _statusService = serviceProvider.GetRequiredService<StatusTrackingService>();
     }
 
     [Fact]
@@ -380,5 +379,29 @@ public class StatusTrackingServiceTests
         // Verify statuses were updated correctly
         Assert.True(await _statusService.IsEndpointOnline(groupId, edgeNodeId, null));
         Assert.True(await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId));
+    }
+    
+    [Fact]
+    public async Task ClearCacheAsync_ShouldClearAllStatusCache()
+    {
+        var groupId = "group1";
+        var edgeNodeId = "edgeNode1";
+        var deviceId = "device1";
+
+        // Set edge node online
+        await _statusService.UpdateEdgeNodeOnlineStatus(groupId, edgeNodeId, true, 1, 1000);
+        // Set device online
+        await _statusService.UpdateDeviceOnlineStatus(groupId, edgeNodeId, deviceId, true, 2000);
+
+        // Verify statuses are correctly cached
+        Assert.True(await _statusService.IsEndpointOnline(groupId, edgeNodeId, null), "EdgeNode should be online before cache clear");
+        Assert.True(await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId), "Device should be online before cache clear");
+
+        // Call ClearCacheAsync method
+        await _statusService.ClearCacheAsync();
+
+        // Verify cache is cleared, all statuses return default value false
+        Assert.False(await _statusService.IsEndpointOnline(groupId, edgeNodeId, null), "EdgeNode should be offline after cache clear");
+        Assert.False(await _statusService.IsEndpointOnline(groupId, edgeNodeId, deviceId), "Device should be offline after cache clear");
     }
 }

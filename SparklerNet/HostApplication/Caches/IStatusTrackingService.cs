@@ -33,4 +33,9 @@ public interface IStatusTrackingService
     /// <param name="isOnline">True if the device is online, otherwise false.</param>
     /// <param name="timestamp">The timestamp of Birth or Death certificates</param>
     Task UpdateDeviceOnlineStatus(string groupId, string edgeNodeId, string deviceId, bool isOnline, long timestamp);
+
+    /// <summary>
+    ///     Clears all status-related cache entries.
+    /// </summary>
+    Task ClearCacheAsync();
 }

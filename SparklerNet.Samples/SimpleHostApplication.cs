@@ -3,7 +3,6 @@ using MQTTnet;
 using SparklerNet.Core.Constants;
 using SparklerNet.Core.Events;
 using SparklerNet.Core.Model;
-using SparklerNet.Core.Options;
 using SparklerNet.HostApplication;
 using SparklerNet.HostApplication.Extensions;
 using static SparklerNet.Core.Constants.SparkplugMessageType;
@@ -22,13 +21,11 @@ public class SimpleHostApplication
     /// <summary>
     ///     Initializes a new instance of the SimpleHostApplication class.
     /// </summary>
-    /// <param name="mqttOptions">MQTT client options</param>
-    /// <param name="sparkplugOptions">Sparkplug client options</param>
-    /// <param name="loggerFactory">Logger factory to create required loggers</param>
-    public SimpleHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions,
-        ILoggerFactory loggerFactory)
+    /// <param name="hostApplication">The Sparkplug Host Application instance.</param>
+    /// <param name="loggerFactory">Logger factory to create required loggers.</param>
+    public SimpleHostApplication(SparkplugHostApplication hostApplication, ILoggerFactory loggerFactory)
     {
-        _hostApplication = new SparkplugHostApplication(mqttOptions, sparkplugOptions, loggerFactory);
+        _hostApplication = hostApplication;
         _logger = loggerFactory.CreateLogger<SimpleHostApplication>();
         _isRunning = false;
     }

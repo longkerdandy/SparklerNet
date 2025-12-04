@@ -1,5 +1,9 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Extensions.Logging;
+using SparklerNet.HostApplication;
+using SparklerNet.HostApplication.Caches;
 using SparklerNet.Samples.Profiles;
 
 namespace SparklerNet.Samples;
@@ -26,9 +30,35 @@ internal static class Program
         var mqttOptions = profile.GetMqttClientOptions();
         var sparkplugOptions = profile.GetSparkplugClientOptions();
 
-        // Create logger factory and host application
+        // Create the logger factory
         using var loggerFactory = new SerilogLoggerFactory(Log.Logger);
-        var hostApp = new SimpleHostApplication(mqttOptions, sparkplugOptions, loggerFactory);
+
+        // Create the dependency injection container
+        var services = new ServiceCollection();
+
+        // Register the singleton services
+        services.AddSingleton(mqttOptions);
+        services.AddSingleton(sparkplugOptions);
+        services.AddSingleton(loggerFactory);
+        services.AddSingleton<ILoggerFactory>(loggerFactory);
+        
+        // Register cache services
+        services.AddMemoryCache();
+        services.AddHybridCache();
+
+        // Register the SparklerNet services
+        services.AddSingleton<IMessageOrderingService, MessageOrderingService>();
+        services.AddSingleton<IStatusTrackingService, StatusTrackingService>();
+        services.AddSingleton<SparkplugHostApplication>();
+
+        // Register the SimpleHostApplication
+        services.AddSingleton<SimpleHostApplication>();
+
+        // Build service provider
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Resolve SimpleHostApplication from the container
+        var hostApp = serviceProvider.GetRequiredService<SimpleHostApplication>();
         hostApp.SubscribeToEvents();
 
         // Handle console input and process commands
