@@ -3,7 +3,6 @@ using MQTTnet;
 using SparklerNet.Core.Constants;
 using SparklerNet.Core.Events;
 using SparklerNet.Core.Model;
-using SparklerNet.Core.Options;
 using SparklerNet.HostApplication;
 using SparklerNet.HostApplication.Extensions;
 using static SparklerNet.Core.Constants.SparkplugMessageType;
@@ -22,13 +21,11 @@ public class SimpleHostApplication
     /// <summary>
     ///     Initializes a new instance of the SimpleHostApplication class.
     /// </summary>
-    /// <param name="mqttOptions">MQTT client options</param>
-    /// <param name="sparkplugOptions">Sparkplug client options</param>
-    /// <param name="loggerFactory">Logger factory to create required loggers</param>
-    public SimpleHostApplication(MqttClientOptions mqttOptions, SparkplugClientOptions sparkplugOptions,
-        ILoggerFactory loggerFactory)
+    /// <param name="hostApplication">The Sparkplug Host Application instance.</param>
+    /// <param name="loggerFactory">Logger factory to create required loggers.</param>
+    public SimpleHostApplication(SparkplugHostApplication hostApplication, ILoggerFactory loggerFactory)
     {
-        _hostApplication = new SparkplugHostApplication(mqttOptions, sparkplugOptions, loggerFactory);
+        _hostApplication = hostApplication;
         _logger = loggerFactory.CreateLogger<SimpleHostApplication>();
         _isRunning = false;
     }
@@ -164,32 +161,67 @@ public class SimpleHostApplication
     {
         try
         {
-            // Show default value in prompt for better user experience
-            const string defaultGroupId = "Sparkplug Group 1";
+            const string defaultGroupId = "Sparkplug_Group_1";
             Console.Write($"Enter Group ID [{defaultGroupId}]: ");
             var groupIdInput = Console.ReadLine();
             var groupId = string.IsNullOrWhiteSpace(groupIdInput) ? defaultGroupId : groupIdInput;
 
-            const string defaultEdgeNodeId = "Sparkplug Node 1";
+            const string defaultEdgeNodeId = "Sparkplug_Node_1";
             Console.Write($"Enter Edge Node ID [{defaultEdgeNodeId}]: ");
             var edgeNodeIdInput = Console.ReadLine();
             var edgeNodeId = string.IsNullOrWhiteSpace(edgeNodeIdInput) ? defaultEdgeNodeId : edgeNodeIdInput;
 
-            if (isNodeCommand)
+            string? deviceId = null;
+            if (!isNodeCommand)
             {
-                _logger.LogInformation("Sending NCMD to {Group}/{Node}", groupId, edgeNodeId);
-                await _hostApplication.PublishEdgeNodeRebirthCommandAsync(groupId, edgeNodeId);
-            }
-            else
-            {
-                // Show default value in prompt for better user experience
-                const string defaultDeviceId = "Sparkplug Device 1";
+                const string defaultDeviceId = "Sparkplug_Device_1";
                 Console.Write($"Enter Device ID [{defaultDeviceId}]: ");
                 var deviceIdInput = Console.ReadLine();
-                var deviceId = string.IsNullOrWhiteSpace(deviceIdInput) ? defaultDeviceId : deviceIdInput;
+                deviceId = string.IsNullOrWhiteSpace(deviceIdInput) ? defaultDeviceId : deviceIdInput;
+            }
 
-                _logger.LogInformation("Sending DCMD to {Group}/{Node}/{Device}", groupId, edgeNodeId, deviceId);
-                await _hostApplication.PublishDeviceRebirthCommandAsync(groupId, edgeNodeId, deviceId);
+            const string defaultCommandType = "Rebirth";
+            string commandType;
+            bool isValid;
+            do
+            {
+                Console.Write($"Enter Command Type (Rebirth/ScanRate) [{defaultCommandType}]: ");
+                var commandTypeInput = Console.ReadLine();
+                commandType = string.IsNullOrWhiteSpace(commandTypeInput)
+                    ? defaultCommandType
+                    : commandTypeInput.Trim();
+
+                // Validate command type with single check
+                isValid = commandType is "Rebirth" or "ScanRate";
+                if (!isValid) Console.WriteLine("Invalid command type. Please enter 'Rebirth' or 'ScanRate'.");
+            } while (!isValid);
+
+            // ReSharper disable once ConvertIfStatementToSwitchStatement
+            if (isNodeCommand && commandType == "Rebirth")
+            {
+                _logger.LogInformation("Sending NCMD Rebirth to {Group}/{Node}", groupId, edgeNodeId);
+                await _hostApplication.PublishEdgeNodeRebirthCommandAsync(groupId, edgeNodeId);
+            }
+            else if (isNodeCommand && commandType == "ScanRate")
+            {
+                var randomScanRate = new Random().Next(1000, 10001);
+                _logger.LogInformation("Sending NCMD ScanRate ({ScanRate}ms) to {Group}/{Node}", randomScanRate,
+                    groupId, edgeNodeId);
+                await _hostApplication.PublishEdgeNodeScanRateCommandAsync(groupId, edgeNodeId, randomScanRate);
+            }
+            else if (!isNodeCommand && commandType == "Rebirth")
+            {
+                _logger.LogInformation("Sending DCMD Rebirth to {Group}/{Node}/{Device}", groupId, edgeNodeId,
+                    deviceId!);
+                await _hostApplication.PublishDeviceRebirthCommandAsync(groupId, edgeNodeId, deviceId!);
+            }
+            else if (!isNodeCommand && commandType == "ScanRate")
+            {
+                var randomScanRate = new Random().Next(1000, 10001);
+                _logger.LogInformation("Sending DCMD ScanRate ({ScanRate}ms) to {Group}/{Node}/{Device}",
+                    randomScanRate, groupId, edgeNodeId, deviceId!);
+                await _hostApplication.PublishDeviceScanRateCommandAsync(groupId, edgeNodeId, deviceId!,
+                    randomScanRate);
             }
         }
         catch (Exception ex)

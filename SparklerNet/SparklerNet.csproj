@@ -7,7 +7,7 @@
         <Nullable>enable</Nullable>
 
         <!-- Version Information -->
-        <Version>0.9.6</Version>
+        <Version>0.9.7</Version>
 
         <!-- NuGet Package Configuration -->
         <!-- Basic Info -->
@@ -34,6 +34,7 @@
     <ItemGroup>
         <!-- Package References -->
         <PackageReference Include="Google.Protobuf" Version="3.33.0"/>
+        <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="9.10.0"/>
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.10"/>
         <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10"/>
         <PackageReference Include="MQTTnet" Version="5.0.1.1416"/>
