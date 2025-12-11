@@ -40,6 +40,14 @@ public record SparkplugClientOptions
     public bool AlwaysSubscribeToWildcardTopic { get; set; }
 
     /// <summary>
+    ///     Whether to enable the status tracking mechanism. When enabled, the Sparkplug Host Application will track the status
+    ///     of each Edge Node and Device. Users can more conveniently check the online status of Edge Nodes and Devices without
+    ///     having to implement this logic themselves.
+    ///     The default value is true.
+    /// </summary>
+    public bool EnableStatusTracking { get; set; } = true;
+
+    /// <summary>
     ///     Whether to enable the message ordering mechanism. The specification requires Sparkplug Host Application to ensure
     ///     that all messages arrive within a Reorder Timeout.
     ///     Since the cache and timeout mechanism actually involves many edge cases to consider, enabling this function will
