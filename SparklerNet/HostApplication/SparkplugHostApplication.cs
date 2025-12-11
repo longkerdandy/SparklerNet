@@ -163,7 +163,7 @@ public class SparkplugHostApplication
         }
 
         _logger.LogInformation(
-            "Successfully started Sparkplug Host Application {HostApplicationId} with MQTT clint id {ClientId}.",
+            "Successfully started Sparkplug Host Application {HostApplicationId} with MQTT client id {ClientId}.",
             _sparkplugOptions.HostApplicationId, _mqttOptions.ClientId);
         return (connectResult, subscribeResult);
     }
@@ -183,8 +183,8 @@ public class SparkplugHostApplication
         await MqttClient.DisconnectAsync();
 
         // Clear the caches
-        await _orderingService.ClearCacheAsync();
-        await _trackingService.ClearCacheAsync();
+        if (_sparkplugOptions.EnableMessageOrdering) await _orderingService.ClearCacheAsync();
+        if (_sparkplugOptions.EnableStatusTracking) await _trackingService.ClearCacheAsync();
         CacheHelper.ClearSemaphores();
 
         _logger.LogInformation("Successfully stopped Sparkplug Host Application {HostApplicationId}.",
@@ -483,9 +483,10 @@ public class SparkplugHostApplication
     {
         if (message.MessageType is NBIRTH or NDEATH)
         {
-            // Update the Edge Node online status
-            await _trackingService.UpdateEdgeNodeOnlineStatus(message.GroupId, message.EdgeNodeId,
-                message.MessageType == NBIRTH, message.Payload.GetBdSeq(), message.Payload.Timestamp);
+            if (_sparkplugOptions.EnableStatusTracking)
+                // Update the Edge Node online status
+                await _trackingService.UpdateEdgeNodeOnlineStatus(message.GroupId, message.EdgeNodeId,
+                    message.MessageType == NBIRTH, message.Payload.GetBdSeq(), message.Payload.Timestamp);
 
             if (_sparkplugOptions.EnableMessageOrdering)
                 // Reset the message order cache for the edge node
@@ -511,9 +512,10 @@ public class SparkplugHostApplication
 
         if (message.MessageType is DBIRTH or DDEATH)
         {
-            // Update the Device online status
-            await _trackingService.UpdateDeviceOnlineStatus(message.GroupId, message.EdgeNodeId, message.DeviceId!,
-                message.MessageType == DBIRTH, message.Payload.Timestamp);
+            if (_sparkplugOptions.EnableStatusTracking)
+                // Update the Device online status
+                await _trackingService.UpdateDeviceOnlineStatus(message.GroupId, message.EdgeNodeId, message.DeviceId!,
+                    message.MessageType == DBIRTH, message.Payload.Timestamp);
 
             // Initialize the pending messages based on the message ordering configuration
             var messages = _sparkplugOptions.EnableMessageOrdering

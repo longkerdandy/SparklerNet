@@ -43,7 +43,7 @@ The library aims to fully implement the complete Sparkplug protocol, with planne
 - ✅ Default wildcard topic support (spBv1.0/#)
 - ✅ Specific group and edge node subscription support
 - ✅ Sparkplug Host Application Message Ordering
-- ⬜ Cache Edge Node and Device birth certificates
+- ✅ Cache Edge Node and Device online status
 
 ### Message Processing
 
@@ -109,6 +109,15 @@ Or reference it directly in your project:
 Here's a simple example of a Sparkplug host application:
 
 ```csharp
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using MQTTnet;
+using SparklerNet.Core.Constants;
+using SparklerNet.Core.Events;
+using SparklerNet.HostApplication;
+using SparklerNet.HostApplication.Caches;
+using SparklerNet.HostApplication.Extensions;
+
 // Create MQTT client options
 var mqttOptions = new MqttClientOptionsBuilder()
     .WithTcpServer("localhost", 1883)
@@ -122,15 +131,36 @@ var sparkplugOptions = new SparkplugClientOptions
     HostApplicationId = "MyHostApplication"
 };
 
-// Create logger
-var loggerFactory = LoggerFactory.Create(builder =>
+// Create the logger factory
+using var loggerFactory = LoggerFactory.Create(builder =>
 {
     builder.AddConsole();
+    builder.SetMinimumLevel(LogLevel.Information);
 });
-var logger = loggerFactory.CreateLogger<SparkplugHostApplication>();
 
-// Create and start host application
-var hostApplication = new SparkplugHostApplication(mqttOptions, sparkplugOptions, logger);
+// Create the dependency injection container
+var services = new ServiceCollection();
+
+// Register the singleton services
+services.AddSingleton(mqttOptions);
+services.AddSingleton(sparkplugOptions);
+services.AddSingleton(loggerFactory);
+services.AddSingleton<ILoggerFactory>(loggerFactory);
+
+// Register cache services
+services.AddMemoryCache();
+services.AddHybridCache();
+
+// Register the SparklerNet services
+services.AddSingleton<IMessageOrderingService, MessageOrderingService>();
+services.AddSingleton<IStatusTrackingService, StatusTrackingService>();
+services.AddSingleton<SparkplugHostApplication>();
+
+// Build service provider
+var serviceProvider = services.BuildServiceProvider();
+
+// Resolve SparkplugHostApplication from the container
+var hostApplication = serviceProvider.GetRequiredService<SparkplugHostApplication>();
 
 // Subscribe to DBIRTH event
 hostApplication.DeviceBirthReceivedAsync += args => {
@@ -151,17 +181,16 @@ await hostApplication.StopAsync();
 
 ## Sample Application
 
-The project includes a comprehensive sample named `SimpleHostApplication` that demonstrates a complete Sparkplug Host Application implementation with the following features:
+The project includes a sample named `SimpleHostApplication` demonstrating a complete Sparkplug Host Application implementation with these core features:
 
-- **Interactive Command-Line Interface**: Provides a user-friendly console interface with commands for controlling the application lifecycle and sending commands
-- **Complete Event Handling**: Demonstrates subscription and processing of all Sparkplug message types (NBIRTH, NDATA, NDEATH, DBIRTH, DDATA, DDEATH, STATE)
-- **Robust Error Handling**: Includes comprehensive exception handling throughout the application lifecycle
-- **Advanced Logging System**: Implements structured logging using Serilog, providing detailed information about message reception and processing
-- **Command Sending Capabilities**: Allows sending rebirth commands to both Edge Nodes and Devices with customizable parameters
-- **User-Friendly Input**: Features command prompts with default values for improved user experience
-- **Detailed Data Display**: Shows comprehensive information about received messages including timestamps, sequences, and all metrics with their types and values
+- **Interactive CLI**: User-friendly console interface for application lifecycle management and command sending
+- **Full Event Processing**: Handles all Sparkplug message types with detailed data display
+- **Command Capabilities**: Sends Rebirth and ScanRate commands to Edge Nodes (NCMD) and Devices (DCMD)
+- **Configuration Profiles**: Supports multiple profiles (mimic, tck) via `--profile` command line argument
+- **Dependency Injection**: Uses Microsoft.Extensions.DependencyInjection for service management
+- **Structured Logging**: Implements Serilog for detailed message and processing logging
 
-Please refer to the `SparklerNet.Samples` project for the complete implementation and to see these features in action.
+Refer to the `SparklerNet.Samples` project for the complete implementation.
 
 ## Project Structure
 
@@ -190,6 +219,10 @@ Please refer to the `SparklerNet.Samples` project for the complete implementatio
 │   │   └── AssemblyInfo.cs # Assembly information
 │   └── SparklerNet.csproj  # Core library project file
 ├── SparklerNet.Samples/    # Sample application
+│   ├── Profiles/           # Configuration profiles
+│   │   ├── IProfile.cs     # Profile interface
+│   │   ├── MimicApplicationProfile.cs # Mimic application profile
+│   │   └── TCKApplicationProfile.cs # TCK application profile
 │   ├── Program.cs          # Sample program entry point
 │   ├── SimpleHostApplication.cs # Simple host application implementation
 │   └── SparklerNet.Samples.csproj # Sample project file
@@ -223,20 +256,12 @@ SparklerNet supports the following Sparkplug B message types:
 ## Dependencies
 
 - Google.Protobuf (3.33.0)
+- Microsoft.Extensions.Caching.Hybrid (9.10.0)
 - Microsoft.Extensions.Caching.Memory (9.0.10)
 - Microsoft.Extensions.Logging (9.0.10)
 - MQTTnet (5.0.1.1416)
 - System.Net.Http (4.3.4)
 - System.Text.RegularExpressions (4.3.1)
-
-## Contribution Guidelines
-
-Contributions via Pull Requests and Issues are welcome. Before submitting code, please ensure:
-
-1. Follow the project's code style and [Git Flow](GIT_FLOW.md)
-2. Add necessary tests
-3. Ensure all tests pass
-4. Provide detailed code explanations
 
 ## License
 
