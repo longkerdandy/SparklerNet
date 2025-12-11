@@ -163,7 +163,7 @@ public class SparkplugHostApplication
         }
 
         _logger.LogInformation(
-            "Successfully started Sparkplug Host Application {HostApplicationId} with MQTT clint id {ClientId}.",
+            "Successfully started Sparkplug Host Application {HostApplicationId} with MQTT client id {ClientId}.",
             _sparkplugOptions.HostApplicationId, _mqttOptions.ClientId);
         return (connectResult, subscribeResult);
     }
