@@ -3,7 +3,7 @@
     <PropertyGroup>
         <!-- Core Project Settings -->
         <TargetFrameworks>net9.0</TargetFrameworks>
-        <TargetFrameworks Condition=" '$(NetCoreAppMaximumVersion)' &gt;= '10.0'">net9.0;net10.0</TargetFrameworks>
+        <TargetFrameworks Condition=" '$(NetCoreAppMaximumVersion)' >= '10.0'">net9.0;net10.0</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
 
