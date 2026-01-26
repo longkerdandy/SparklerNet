@@ -3,7 +3,7 @@
     <PropertyGroup>
         <!-- Core Project Settings -->
         <TargetFrameworks>net9.0</TargetFrameworks>
-        <TargetFrameworks Condition=" '$(NetCoreAppMaximumVersion)' >= '10.0'">net9.0;net10.0</TargetFrameworks>
+        <TargetFrameworks Condition=" '$(NetCoreAppMaximumVersion)' &gt;= '10.0'">net9.0;net10.0</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
 
@@ -35,21 +35,21 @@
 
     <ItemGroup>
         <!-- Package References -->
-        <PackageReference Include="Google.Protobuf" Version="3.33.0"/>
-        <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="9.10.0"/>
-        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.10"/>
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10"/>
-        <PackageReference Include="MQTTnet" Version="5.0.1.1416"/>
-        <PackageReference Include="System.Net.Http" Version="4.3.4"/>
-        <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1"/>
+        <PackageReference Include="Google.Protobuf" Version="3.33.4" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="10.2.0" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.2" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.2" />
+        <PackageReference Include="MQTTnet" Version="5.0.1.1416" />
+        <PackageReference Include="System.Net.Http" Version="4.3.4" />
+        <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
     </ItemGroup>
 
     <ItemGroup>
         <!-- Folders and Files -->
-        <Folder Include="Core\Protobuf\"/>
+        <Folder Include="Core\Protobuf\" />
 
         <!-- Include the README file in the NuGet package -->
-        <None Include="..\README.md" Pack="true" PackagePath=""/>
+        <None Include="..\README.md" Pack="true" PackagePath="" />
     </ItemGroup>
 
 </Project>
