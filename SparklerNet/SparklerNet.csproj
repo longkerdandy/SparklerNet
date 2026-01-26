@@ -3,14 +3,12 @@
     <PropertyGroup>
         <!-- Core Project Settings -->
         <TargetFrameworks>net9.0</TargetFrameworks>
-        <!-- Conditionally add net10.0 support if SDK supports it -->
-        <TargetFrameworks Condition="$(MSBuildRuntimeType) == 'Full' AND '$(NetCoreAppMaximumVersion)' >= '10.0'">net9.0;net10.0</TargetFrameworks>
-        <TargetFrameworks Condition="$(MSBuildRuntimeType) == 'Core' AND '$(NetCoreAppMaximumVersion)' >= '10.0'">net9.0;net10.0</TargetFrameworks>
+        <TargetFrameworks Condition=" '$(NetCoreAppMaximumVersion)' >= '10.0'">net9.0;net10.0</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
 
         <!-- Version Information -->
-        <Version>0.9.7</Version>
+        <Version>0.9.8-dev</Version>
 
         <!-- NuGet Package Configuration -->
         <!-- Basic Info -->

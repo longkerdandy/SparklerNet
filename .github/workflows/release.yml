@@ -30,7 +30,7 @@ jobs:
       - name: Set up .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
 
       # Extract version from tag (e.g., v1.0.0 → 1.0.0; v2.3.4-beta.1 → 2.3.4-beta.1)
       - name: Extract version number from tag
